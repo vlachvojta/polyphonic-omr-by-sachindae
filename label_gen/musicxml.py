@@ -51,7 +51,8 @@ class MusicXML():
             try:
                 tree = ET.parse(input_file)
                 root = tree.getroot()
-            except:
+            except ET.ParseError:
+                print('Invalid XML file')
                 return
 
             # Index in parse tree with information about page width
@@ -59,7 +60,7 @@ class MusicXML():
 
             # Look for "defaults" tag which contains page width information
             for i, child in enumerate(root):
-                if child.tag == 'defaults':
+                if child.tag == 'defaults' or child.tag == 'part-list':
                     defaults_idx = i
                     break
 
