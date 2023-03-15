@@ -1,7 +1,9 @@
-# Script for parsing MusicXML and generating ground truth 
-# sequence labels in desired manner. This version generates ground truth
-# sequence labels for the first line of the first part of the MusicXML file.
-# python genlabels.py -input <.musicxmls directory> -output <.semantic directory>
+"""
+Script for parsing MusicXML and generating ground truth
+sequence labels in desired manner. This version generates ground truth
+sequence labels for the first line of the first part of the MusicXML file.
+python genlabels.py -input <.musicxmls directory> -output <.semantic directory>
+"""
 
 import sys
 import os
@@ -9,7 +11,6 @@ import argparse
 from musicxml import MusicXML
 
 if __name__ == '__main__':
-
     """
     Command line args:
 
@@ -19,8 +20,10 @@ if __name__ == '__main__':
 
     # Parse command line arguments for input/output directories
     parser = argparse.ArgumentParser()
-    parser.add_argument('-input', dest='input', type=str, required='-c' not in sys.argv, help='Path to the input directory with MusicXMLs.')
-    parser.add_argument('-output', dest='output', type=str, required=True, help='Path to the output directory to write sequences.')
+    parser.add_argument('-input', dest='input', type=str, required='-c' not in sys.argv,
+                        help='Path to the input directory with MusicXMLs.')
+    parser.add_argument('-output', dest='output', type=str, required=True,
+                        help='Path to the output directory to write sequences.')
     args = parser.parse_args()
 
     #print('Input dir (MusicXMLs):', args.input)

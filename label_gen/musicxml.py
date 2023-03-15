@@ -3,17 +3,19 @@ Contains class that converts MusicXML to a sequence
 by parsing it
 """
 
-import sys
+# import sys
+import functools
+
 import xml.etree.ElementTree as ET
 
 from measure import Measure
 
-import functools
 
 class MusicXML():
-
+    """
+    Class that converts MusicXML to a sequence by parsing it.
+    """
     def __init__(self, input_file=None, output_file=None):
-
         """
         Stores MusicXML file passed in 
         """
