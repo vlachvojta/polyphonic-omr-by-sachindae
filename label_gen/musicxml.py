@@ -47,12 +47,15 @@ class MusicXML():
         # Track whether current page being labeled is polyphonic or not
         self.polyphonic_page = False
 
+        # Add default MuseScore version for later use.
+        self.musescore_version = self.UNSET_MUSESCORE_VERSION
+
         # Read file
         self.root = self.get_root()
         if self.root is None:
             return
 
-        # Add default MuseScore version for later use.
+        # Get musescore version from read file.
         self.musescore_version = self.get_musescore_version()
 
         # Read the width and cutoffs for each page of the .musicxml file
@@ -135,7 +138,12 @@ class MusicXML():
         to the output file (one page = one sequence)
         """
         # Read all of the sequences of a .musicxml, each page counts as one
-        sequences = self.get_sequences()
+        if self.musescore_version == 3:
+            sequences = self.get_sequences_m3()
+        elif self.musescore_version == 4:
+            sequences = self.get_sequences_m4()
+        elif self.musescore_version == self.UNSET_MUSESCORE_VERSION:
+            return
 
         # fname = self.output_file.split('.')[0]
         print(f'Separated into {len(sequences)} files.')
@@ -166,12 +174,120 @@ class MusicXML():
                 out_file.write('')
                 out_file.close()
 
-    def get_sequences(self):
+    def get_sequences_m4(self):
 
         """
         Parses MusicXML file and returns sequences corresponding
         to the first staff of the first part of the score
         (list of symbols for each page)
+        Uses musicxml file created in MuseScore4
+        """
+        # Check if reading input file was succesfull
+        if self.root is None:
+            return []
+
+        # Stores all symbolic sequences for the .musicxml
+        sequences = []
+
+        new_score = True
+
+        # Indexing for part list
+        part_list_idx = -1
+        part_idx = -1
+
+        # Find <part-list> and <part> element indexes
+        for i, child in enumerate(self.root):
+            if child.tag == 'part-list':
+                part_list_idx = i
+            elif child.tag == 'part':
+                # Choose 1st part only to generate sequence
+                part_idx = i if part_idx == -1 else part_idx
+
+        # Check for bad MusicXML
+        if part_list_idx == -1 or part_idx == -1:
+            print('MusicXML file:', self.input_file,' missing <part-list> or <part>')
+            return ['']
+
+        # Get number of staves in the MusicXML
+        num_staves = 1
+        try:
+            for e in self.root[part_idx][0][0]:
+                if e.tag == 'staff-layout':
+                    num_staves = int(e.attrib['number'])
+        except IndexError:
+            return ['']
+        staves = ['' for x in range(num_staves)]    # Holds sequence of each staff
+
+        # Read each measure
+        r_iter = iter(self.root[part_idx])
+        # cur_width = 0.0     # Sum of width of measures currently read
+        page_num = 1        # Current page number (for naming)
+        # new_page_m3 = False    # Tracks if just beginning a new page due to "print" element
+        new_system_m4 = False  # Tracks if just beginning a new system OR PAGE
+
+        # Iterate through all measures
+        for i, measure in enumerate(r_iter):
+
+            # Increment current width by the measure's width
+            # cur_width += float(measure.attrib['width'])
+
+            # Check if need to create a new page (ie. new sample)
+            child_elems = [e for e in measure]
+            child_tags = [e.tag for e in child_elems]
+
+            # Get MuseScore4 new_system marker
+            for elem in child_elems:
+                if (elem.tag == 'print' and
+                        ('new-page' in elem.attrib or 'new-system' in elem.attrib)):
+                    new_system_m4 = True
+                    break
+
+            # # Get MuseScore3 new_page marker
+            # if 'print' in child_tags:
+            #     print_children = [e.tag for e in list(iter(child_elems[child_tags.index('print')]))]
+            #     if 'system-layout' in print_children:
+            #         new_page_m3 = True
+
+            if new_system_m4:
+                # Save the current sequence to be saved
+                sequences.append(staves[0])
+                staves = ['' for x in range(num_staves)]
+                # cur_width = int(float(measure.attrib['width']))
+                page_num += 1
+
+                # Reset polyphonic page and print if necessary
+                if self.polyphonic_page:
+                    print(self.input_file.split('\\')[-1].split('.')[0] + '-' + str(page_num-1))
+                self.polyphonic_page = False
+
+            # Gets the symbolic sequence of each staff in measure of first part
+            measure_staves, skip = self.read_measure(measure, num_staves, new_system_m4, staves, new_score)
+            new_score = False
+
+            # Updates current symbolic sequence of each staff with current measure's symbols
+            for j in range(num_staves):
+                staves[j] += measure_staves[j]
+
+            # Skips any measures as needed
+            for j in range(skip-1):
+                next(r_iter)
+
+            new_system_m4 = False
+
+        # Add any remaining measures to list of sequences
+        # if cur_width > 0:
+        #     sequences.append(staves[0])
+        #     staves = ['' for x in range(num_staves)]
+        #     cur_width = int(float(measure.attrib['width']))
+
+        return sequences
+
+    def get_sequences_m3(self):
+        """
+        Parses MusicXML file and returns sequences corresponding
+        to the first staff of the first part of the score
+        (list of symbols for each page)
+        Uses musicxml file created in MuseScore3
         """
         # Check if reading input file was succesfull
         if self.root is None:
@@ -214,16 +330,14 @@ class MusicXML():
         cur_width = 0.0     # Sum of width of measures currently read
         page_num = 1        # Current page number (for naming)
         new_page_m3 = False    # Tracks if just beginning a new page due to "print" element
-        new_system_m4 = False  # Tracks if just beginning a new system OR PAGE
+        # new_system_m4 = False  # Tracks if just beginning a new system OR PAGE
 
         # Iterate through all measures
         for i, measure in enumerate(r_iter):
 
             # Increment current width by the measure's width
-            if self.musescore_version == 3:
-                cur_width += float(measure.attrib['width'])
+            cur_width += float(measure.attrib['width'])
 
-            # TODO add version switch HERE (DO not skip other systems in MuseScore4)
             # Check if need to create a new page (ie. new sample)
             child_elems = [e for e in measure]
             child_tags = [e.tag for e in child_elems]
