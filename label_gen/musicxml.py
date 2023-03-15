@@ -342,12 +342,12 @@ class MusicXML():
             child_elems = [e for e in measure]
             child_tags = [e.tag for e in child_elems]
 
-            # Get MuseScore4 new_system marker
-            for elem in child_elems:
-                if (elem.tag == 'print' and
-                        ('new-page' in elem.attrib or 'new-system' in elem.attrib)):
-                    new_system_m4 = True
-                    break
+            # # Get MuseScore4 new_system marker
+            # for elem in child_elems:
+            #     if (elem.tag == 'print' and
+            #             ('new-page' in elem.attrib or 'new-system' in elem.attrib)):
+            #         new_system_m4 = True
+            #         break
 
             # Get MuseScore3 new_page marker
             if 'print' in child_tags:
