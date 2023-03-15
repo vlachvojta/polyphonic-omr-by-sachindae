@@ -17,6 +17,7 @@ class MusicXML():
     """
 
     UNSET_MUSESCORE_VERSION = -1
+    UNSET_WIDTH = -1
 
     def __init__(self, input_file=None, output_file=None):
         """
@@ -45,10 +46,12 @@ class MusicXML():
 
         # Add default MuseScore version for later use.
         self.musescore_version = self.get_musescore_version()
-        print(self.musescore_version)
 
         # Read the width and cutoffs for each page of the .musicxml file
-        self.get_width()
+        if self.musescore_version == 3:
+            self.get_width()
+        elif self.musescore_version == 4:
+            self.width_cutoff = self.UNSET_WIDTH
 
     def get_root(self):
         """Read file and parse it as XML. Return None if file is invalid."""
@@ -69,56 +72,49 @@ class MusicXML():
                              "Probably isn't valid .musicxml file.")
             return self.UNSET_MUSESCORE_VERSION
 
-        return versions[0].text.split(' ')[-1][0]
+        return int(versions[0].text.split(' ')[-1][0])
 
     def get_width(self):
         """
         Reads width/cutoffs on left/right of XML
         """
 
+        if self.root is None:
+            return self.UNSET_WIDTH
+
         margins = 0
 
-        with open(self.input_file, 'r', errors='ignore') as input_file:
-            
-            # Check for valid parse tree in .musicxml file
-            try:
-                tree = ET.parse(input_file)
-                root = tree.getroot()
-            except ET.ParseError:
-                print('Invalid XML file')
-                return
+        # Index in parse tree with information about page width
+        defaults_idx = -1
 
-            # Index in parse tree with information about page width
-            defaults_idx = -1
+        # Look for "defaults" tag which contains page width information
+        for i, child in enumerate(self.root):
+            if child.tag == 'defaults' or child.tag == 'part-list':
+                defaults_idx = i
+                break
 
-            # Look for "defaults" tag which contains page width information
-            for i, child in enumerate(root):
-                if child.tag == 'defaults' or child.tag == 'part-list':
-                    defaults_idx = i
-                    break
+        # Check for bad MusicXML
+        if defaults_idx == -1:
+            print('MusicXML file:', self.input_file,' missing <score-partwise> or <part>')
+            return
 
-            # Check for bad MusicXML
-            if defaults_idx == -1:
-                print('MusicXML file:', self.input_file,' missing <score-partwise> or <part>')
-                return
+        # .MusicXML defines margins separately for odd even pages,
+        #  assume they are the same
+        margin_found = False            
 
-            # .MusicXML defines margins separately for odd even pages,
-            #  assume they are the same
-            margin_found = False            
-
-            # Get number of staves in the MusicXML
-            for i,e in enumerate(root[defaults_idx]):
-                if e.tag == 'page-layout':
-                    for c in e:
-                        if c.tag == 'page-width':
-                            self.width = float(c.text)
-                        elif c.tag == 'page-margins' and not margin_found:
-                            for k in c:
-                                if k.tag == 'left-margin':
-                                    margins += float(k.text)
-                                elif k.tag == 'right-margin':
-                                    margins += float(k.text)
-                            margin_found = True
+        # Get number of staves in the MusicXML
+        for i,e in enumerate(self.root[defaults_idx]):
+            if e.tag == 'page-layout':
+                for c in e:
+                    if c.tag == 'page-width':
+                        self.width = float(c.text)
+                    elif c.tag == 'page-margins' and not margin_found:
+                        for k in c:
+                            if k.tag == 'left-margin':
+                                margins += float(k.text)
+                            elif k.tag == 'right-margin':
+                                margins += float(k.text)
+                        margin_found = True
 
         # Based on width and margins read, set the width per page, for calculating
         # when to proceed to next page (sample) while generating labels
@@ -131,10 +127,12 @@ class MusicXML():
         to the output file (one page = one sequence)
         """
 
+        # TODO check for self.root is None
+
         # Read all of the sequences of a .musicxml, each page counts as one
         sequences = self.get_sequences()
 
-        fname = self.output_file.split('.')[0]
+        # fname = self.output_file.split('.')[0]
 
         # Write all of the ground truth sequences to files
         for file_num, seq in enumerate(sequences):
@@ -164,93 +162,87 @@ class MusicXML():
         to the first staff of the first part of the score
         (list of symbols for each page)
         """
+        # Check if reading input file was succesfull
+        if self.root is None:
+            return []
 
         # Stores all symbolic sequences for the .musicxml
         sequences = []
 
         new_score = True
 
-        with open(self.input_file, 'r') as input_file:
+        # Indexing for part list
+        part_list_idx = -1
+        part_idx = -1
 
-            # Get parse tree
-            try:
-                tree = ET.parse(input_file)
-                root = tree.getroot()
-            except:
-                return sequences
+        # Find <part-list> and <part> element indexes
+        for i, child in enumerate(self.root):
+            if child.tag == 'part-list':
+                part_list_idx = i
+            elif child.tag == 'part':
+                # Choose 1st part only to generate sequence
+                part_idx = i if part_idx == -1 else part_idx
 
-            # Indexing for part list
-            part_list_idx = -1
-            part_idx = -1
+        # Check for bad MusicXML
+        if part_list_idx == -1 or part_idx == -1:
+            print('MusicXML file:', self.input_file,' missing <part-list> or <part>')
+            return ['']
 
-            # Find <part-list> and <part> element indexes
-            for i, child in enumerate(root):
-                if child.tag == 'part-list':
-                    part_list_idx = i
-                elif child.tag == 'part':
-                    # Choose 1st part only to generate sequence
-                    part_idx = i if part_idx == -1 else part_idx
+        # Get number of staves in the MusicXML
+        num_staves = 1
+        try:
+            for e in self.root[part_idx][0][0]:
+                if e.tag == 'staff-layout':
+                    num_staves = int(e.attrib['number'])
+        except IndexError:
+            return ['']
+        staves = ['' for x in range(num_staves)]    # Holds sequence of each staff
 
-            # Check for bad MusicXML
-            if part_list_idx == -1 or part_idx == -1:
-                print('MusicXML file:', self.input_file,' missing <part-list> or <part>')
-                return ['']
+        # Read each measure
+        r_iter = iter(self.root[part_idx])
+        cur_width = 0.0     # Sum of width of measures currently read
+        page_num = 1        # Current page number (for naming)
+        new_page = False    # Tracks if just beginning a new page due to "print" element
 
-            # Get number of staves in the MusicXML
-            num_staves = 1
-            try:
-                for e in root[part_idx][0][0]:
-                    if e.tag == 'staff-layout':
-                        num_staves = int(e.attrib['number'])
-            except IndexError:
-                return ['']
-            staves = ['' for x in range(num_staves)]    # Holds sequence of each staff
+        # Iterate through all measures
+        for i, measure in enumerate(r_iter):
 
-            # Read each measure
-            r_iter = iter(root[part_idx])
-            cur_width = 0.0     # Sum of width of measures currently read
-            page_num = 1        # Current page number (for naming)
-            new_page = False    # Tracks if just beginning a new page due to "print" element
+            # Increment current width by the measure's width
+            cur_width += float(measure.attrib['width'])
 
-            # Iterate through all measures 
-            for i, measure in enumerate(r_iter):
+            # TODO add version switch HERE (DO not skip other systems in MuseScore4)
+            # Check if need to create a new page (ie. new sample)
+            child_elems = [e for e in measure]
+            child_tags = [e.tag for e in child_elems]
+            if 'print' in child_tags:
+                print_children = [e.tag for e in list(iter(child_elems[child_tags.index('print')]))]
+                if 'system-layout' in print_children: 
+                    new_page = True
+            if cur_width > self.width_cutoff or new_page:
+                # Save the current sequence to be saved
+                sequences.append(staves[0])
+                staves = ['' for x in range(num_staves)]
+                cur_width = int(float(measure.attrib['width']))
+                page_num += 1
 
-                # Increment current width by the measure's width
-                cur_width += float(measure.attrib['width'])
+                # Reset polyphonic page and print if necessary
+                if self.polyphonic_page:
+                    print(self.input_file.split('\\')[-1].split('.')[0] + '-' + str(page_num-1))
+                self.polyphonic_page = False
 
-                # TODO add version switch HERE (DO not skip other systems in MuseScore4)
-                # Check if need to create a new page (ie. new sample)
-                child_elems = [e for e in measure]
-                child_tags = [e.tag for e in child_elems]
-                if 'print' in child_tags:
-                    print_children = [e.tag for e in list(iter(child_elems[child_tags.index('print')]))]
-                    if 'system-layout' in print_children: 
-                        new_page = True
-                if cur_width > self.width_cutoff or new_page:
-                    # Save the current sequence to be saved
-                    sequences.append(staves[0])
-                    staves = ['' for x in range(num_staves)]
-                    cur_width = int(float(measure.attrib['width']))
-                    page_num += 1
+            # Gets the symbolic sequence of each staff in measure of first part
+            measure_staves, skip = self.read_measure(measure, num_staves, new_page, staves, new_score)
+            new_score = False
 
-                    # Reset polyphonic page and print if necessary
-                    if self.polyphonic_page:
-                        print(self.input_file.split('\\')[-1].split('.')[0] + '-' + str(page_num-1))
-                    self.polyphonic_page = False
+            # Updates current symbolic sequence of each staff with current measure's symbols
+            for j in range(num_staves):
+                staves[j] += measure_staves[j]
 
-                # Gets the symbolic sequence of each staff in measure of first part
-                measure_staves, skip = self.read_measure(measure, num_staves, new_page, staves, new_score)
-                new_score = False
+            # Skips any measures as needed
+            for j in range(skip-1):
+                next(r_iter)
 
-                # Updates current symbolic sequence of each staff with current measure's symbols
-                for j in range(num_staves):
-                    staves[j] += measure_staves[j]
-
-                # Skips any measures as needed
-                for j in range(skip-1):
-                    next(r_iter)
-
-                new_page = False
+            new_page = False
 
         # Add any remaining measures to list of sequences
         if cur_width > 0:
