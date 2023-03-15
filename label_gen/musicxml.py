@@ -4,7 +4,7 @@ by parsing it
 """
 
 import sys
-import xml.etree.ElementTree as ET 
+import xml.etree.ElementTree as ET
 
 from measure import Measure
 
@@ -21,6 +21,7 @@ class MusicXML():
         # Input/output file path (.musicxml and .semantic)
         self.input_file = input_file
         self.output_file = output_file
+        print(self.output_file)
 
         # Set default values for key, clef, time signature
         self.key = ''
@@ -96,22 +97,25 @@ class MusicXML():
 
         # Read all of the sequences of a .musicxml, each page counts as one
         sequences = self.get_sequences()
-        file_num = 0
 
         fname = self.output_file.split('.')[0]
 
         # Write all of the ground truth sequences to files
-        for seq in sequences:
-            break
-            file_num += 1
+        for file_num, seq in enumerate(sequences):
+            # print_len = min(len(seq), 50)
+            # print(f'seq:{seq[:print_len]} ...')
+            # break
 
             # Empty page, don't generate label file
             if seq == '':
                 continue
+
+            # check existing directory and create if needed
+            # dir = re.split(self.output_file)
             
             # Write the sequence to appropriately named file
-            with open(fname + '-' + str(file_num) + '.semantic', 'w') as out_file:
-
+            # with open(fname + '-' + str(file_num) + '.semantic', 'w') as out_file:
+            with open(f'{self.output_file}-{str(file_num + 1).zfill(2)}.semantic', 'w') as out_file:
                 out_file.write('')
                 out_file.write((seq + '\n'))
                 out_file.write('')

@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
         # Create a MusicXML object for generating sequences
         input_path = os.path.join(args.input, file_name)
-        output_path = os.path.join(args.output, ''.join(file_name.split('.')[:-1]) + '.semantic')
+        output_path = os.path.join(args.output, ''.join(file_name.split('.')[:-1]))
         musicxml_obj = MusicXML(input_file=input_path, output_file=output_path)
 
         # Generate output sequence
