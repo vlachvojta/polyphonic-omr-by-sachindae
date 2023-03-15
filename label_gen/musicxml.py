@@ -15,6 +15,9 @@ class MusicXML():
     """
     Class that converts MusicXML to a sequence by parsing it.
     """
+
+    UNSET_MUSESCORE_VERSION = -1
+
     def __init__(self, input_file=None, output_file=None):
         """
         Stores MusicXML file passed in 
@@ -35,11 +38,38 @@ class MusicXML():
         # Track whether current page being labeled is polyphonic or not
         self.polyphonic_page = False
 
+        # Read file
+        self.root = self.get_root()
+        if self.root is None:
+            return
+
         # Add default MuseScore version for later use.
-        self.musescore_version = -1
+        self.musescore_version = self.get_musescore_version()
+        print(self.musescore_version)
 
         # Read the width and cutoffs for each page of the .musicxml file
         self.get_width()
+
+    def get_root(self):
+        """Read file and parse it as XML. Return None if file is invalid."""
+        with open(self.input_file, 'r', errors='ignore', encoding='utf-8') as input_file:
+            # Check for valid parse tree in .musicxml file
+            try:
+                tree = ET.parse(input_file)
+                return tree.getroot()
+            except ET.ParseError:
+                print('Invalid XML file')
+                return None
+
+    def get_musescore_version(self):
+        """Get musescore version using "software" tag in the file."""
+        versions = self.root.findall('.//software')
+        if not versions:
+            print("XML file has no \"software\" tag. "
+                             "Probably isn't valid .musicxml file.")
+            return self.UNSET_MUSESCORE_VERSION
+
+        return versions[0].text.split(' ')[-1][0]
 
     def get_width(self):
         """
@@ -57,13 +87,6 @@ class MusicXML():
             except ET.ParseError:
                 print('Invalid XML file')
                 return
-
-            # Get MuseScore version the input file was created in
-            versions = root.findall('.//software')
-            if not versions:
-                raise ValueError("XML file has no \"software\" tag. "
-                                 "Probably isn't valid .musicxml file.")
-            self.musescore_version = versions[0].text.split(' ')[-1][0]
 
             # Index in parse tree with information about page width
             defaults_idx = -1
@@ -195,6 +218,7 @@ class MusicXML():
                 # Increment current width by the measure's width
                 cur_width += float(measure.attrib['width'])
 
+                # TODO add version switch HERE (DO not skip other systems in MuseScore4)
                 # Check if need to create a new page (ie. new sample)
                 child_elems = [e for e in measure]
                 child_tags = [e.tag for e in child_elems]
