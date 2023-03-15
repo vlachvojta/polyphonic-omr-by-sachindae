@@ -1,6 +1,14 @@
 """
 Contains class that converts MusicXML to a sequence
-by parsing it
+by parsing it.
+
+MuseScore version 3 and 4 are used here as a way to recognize separator of individual staves.
+MuseScore 3 (original purposed pipeline by sachindae)
+- Separate after "new-page" with "system-layout" child tag.
+- + some stuff with counting widths of meassures and stuff.
+MuseScore 4 (my new purposed pipeline)
+- Separate after every "new-system" or "new-system" tag.
+TODO implement MuseScore4 purposed pipeline
 """
 
 # import sys
@@ -126,13 +134,11 @@ class MusicXML():
         Outputs the sequences of this MusicXML object
         to the output file (one page = one sequence)
         """
-
-        # TODO check for self.root is None
-
         # Read all of the sequences of a .musicxml, each page counts as one
         sequences = self.get_sequences()
 
         # fname = self.output_file.split('.')[0]
+        print(f'Separated into {len(sequences)} files.')
 
         # Write all of the ground truth sequences to files
         for file_num, seq in enumerate(sequences):
@@ -146,15 +152,20 @@ class MusicXML():
 
             # check existing directory and create if needed
             # dir = re.split(self.output_file)
-            
+
             # Write the sequence to appropriately named file
             # with open(fname + '-' + str(file_num) + '.semantic', 'w') as out_file:
-            with open(f'{self.output_file}-{str(file_num + 1).zfill(2)}.semantic', 'w') as out_file:
+            if self.musescore_version == 3:
+                output_file = f'{self.output_file}_s{str(file_num + 1).zfill(2)}.semantic'
+            elif self.musescore_version == 4:
+                output_file = f'{self.output_file}_s{str(file_num).zfill(2)}.semantic'
+
+            with open(output_file, 'w', encoding='utf-8') as out_file:
                 out_file.write('')
                 out_file.write((seq + '\n'))
                 out_file.write('')
                 out_file.close()
-                
+
     def get_sequences(self):
 
         """
@@ -202,23 +213,35 @@ class MusicXML():
         r_iter = iter(self.root[part_idx])
         cur_width = 0.0     # Sum of width of measures currently read
         page_num = 1        # Current page number (for naming)
-        new_page = False    # Tracks if just beginning a new page due to "print" element
+        new_page_m3 = False    # Tracks if just beginning a new page due to "print" element
+        new_system_m4 = False  # Tracks if just beginning a new system OR PAGE
 
         # Iterate through all measures
         for i, measure in enumerate(r_iter):
 
             # Increment current width by the measure's width
-            cur_width += float(measure.attrib['width'])
+            if self.musescore_version == 3:
+                cur_width += float(measure.attrib['width'])
 
             # TODO add version switch HERE (DO not skip other systems in MuseScore4)
             # Check if need to create a new page (ie. new sample)
             child_elems = [e for e in measure]
             child_tags = [e.tag for e in child_elems]
+
+            # Get MuseScore4 new_system marker
+            for elem in child_elems:
+                if (elem.tag == 'print' and
+                        ('new-page' in elem.attrib or 'new-system' in elem.attrib)):
+                    new_system_m4 = True
+                    break
+
+            # Get MuseScore3 new_page marker
             if 'print' in child_tags:
                 print_children = [e.tag for e in list(iter(child_elems[child_tags.index('print')]))]
-                if 'system-layout' in print_children: 
-                    new_page = True
-            if cur_width > self.width_cutoff or new_page:
+                if 'system-layout' in print_children:
+                    new_page_m3 = True
+
+            if cur_width > self.width_cutoff or new_page_m3:
                 # Save the current sequence to be saved
                 sequences.append(staves[0])
                 staves = ['' for x in range(num_staves)]
@@ -231,7 +254,7 @@ class MusicXML():
                 self.polyphonic_page = False
 
             # Gets the symbolic sequence of each staff in measure of first part
-            measure_staves, skip = self.read_measure(measure, num_staves, new_page, staves, new_score)
+            measure_staves, skip = self.read_measure(measure, num_staves, new_page_m3, staves, new_score)
             new_score = False
 
             # Updates current symbolic sequence of each staff with current measure's symbols
@@ -242,7 +265,7 @@ class MusicXML():
             for j in range(skip-1):
                 next(r_iter)
 
-            new_page = False
+            new_page_m3 = False
 
         # Add any remaining measures to list of sequences
         if cur_width > 0:
