@@ -39,6 +39,9 @@ if __name__ == '__main__':
         if not file_name.endswith('.musicxml'):
             continue
 
+        if not os.path.exists(args.output):
+            os.makedirs(args.output)
+
         # Create a MusicXML object for generating sequences
         input_path = os.path.join(args.input, file_name)
         output_path = os.path.join(args.output, ''.join(file_name.split('.')[:-1]))
