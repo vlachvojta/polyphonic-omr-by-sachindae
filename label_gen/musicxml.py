@@ -35,6 +35,9 @@ class MusicXML():
         # Track whether current page being labeled is polyphonic or not
         self.polyphonic_page = False
 
+        # Add default MuseScore version for later use.
+        self.musescore_version = -1
+
         # Read the width and cutoffs for each page of the .musicxml file
         self.get_width()
 
@@ -54,6 +57,13 @@ class MusicXML():
             except ET.ParseError:
                 print('Invalid XML file')
                 return
+
+            # Get MuseScore version the input file was created in
+            versions = root.findall('.//software')
+            if not versions:
+                raise ValueError("XML file has no \"software\" tag. "
+                                 "Probably isn't valid .musicxml file.")
+            self.musescore_version = versions[0].text.split(' ')[-1][0]
 
             # Index in parse tree with information about page width
             defaults_idx = -1
