@@ -4,6 +4,7 @@
 import sys
 import os
 import argparse
+import time
 
 from lxml import etree
 
@@ -12,6 +13,8 @@ def main():
     """
     Main method
     """
+
+    start = time.time()
 
     num_files = 0
 
@@ -28,6 +31,7 @@ def main():
     for i, file_name in enumerate(files):
         if i % 200 == 0:
             print('.', end='')
+            sys.stdout.flush()
         # Make sure file is .musicxml
         if not file_name.endswith('.musicxml'):
             continue
@@ -67,8 +71,10 @@ def main():
         f.close()
         num_files += 1
 
+    end = time.time()
     print('')
-    print('Total files:',num_files)
+    print('Total files:', num_files)
+    print(f'Total time: {end - start:.2f} s')
 
 
 if __name__ == "__main__":
