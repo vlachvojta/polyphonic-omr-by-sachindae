@@ -8,26 +8,40 @@ python genlabels.py -input <.musicxmls directory> -output <.semantic directory>
 import sys
 import os
 import argparse
+# import logging
+
 from musicxml import MusicXML
 
-if __name__ == '__main__':
-    """
-    Command line args:
 
-    -input <input directory with MusicXMLS>
-    -output <output directory to write to>
-    """
+def parseargs():
+    """Parse arguments."""
+    print('sys.argv: ')
+    print(' '.join(sys.argv))
+    print('--------------------------------------')
 
-    # Parse command line arguments for input/output directories
     parser = argparse.ArgumentParser()
-    parser.add_argument('-input', dest='input', type=str, required='-c' not in sys.argv,
-                        help='Path to the input directory with MusicXMLs.')
-    parser.add_argument('-output', dest='output', type=str, required=True,
-                        help='Path to the output directory to write sequences.')
-    args = parser.parse_args()
+    parser.add_argument(
+        '-i', '--input-folder', dest='input', type=str,   # required='-c' not in sys.argv,
+        help='Path to the input directory with MusicXMLs.')
+    parser.add_argument(
+        '-o', '-output-folder', dest='output', type=str, required=True,
+        help='Path to the output directory to write sequences.')
+    # parser.add_argument(
+    #     '-v', "--verbose", action='store_true', default=False,
+    #     help="Activate verbose logging.")
+    return parser.parse_args()
+
+
+def main():
+    args = parseargs()
 
     #print('Input dir (MusicXMLs):', args.input)
     #print('Output dir (Sequences):', args.output)
+
+    # if args.verbose:
+    #     logging.basicConfig(level=logging.DEBUG, format='[%(levelname)-s]\t- %(message)s')
+    # else:
+    #     logging.basicConfig(level=logging.INFO,format='[%(levelname)-s]\t- %(message)s')
 
     # For tracking number of MusicXML files read
     file_num = 0
@@ -55,3 +69,7 @@ if __name__ == '__main__':
             pass
 
     print('Num MusicXML files read:', file_num)
+
+
+if __name__ == '__main__':
+    main()

@@ -13,6 +13,8 @@ TODO implement MuseScore4 purposed pipeline
 
 # import sys
 import functools
+import os
+import re
 
 import xml.etree.ElementTree as ET
 
@@ -35,7 +37,7 @@ class MusicXML():
         # Input/output file path (.musicxml and .semantic)
         self.input_file = input_file
         self.output_file = output_file
-        print(self.output_file)
+        print(os.path.basename(self.input_file))
 
         # Set default values for key, clef, time signature
         self.key = ''
@@ -146,7 +148,7 @@ class MusicXML():
             return
 
         # fname = self.output_file.split('.')[0]
-        print(f'Separated into {len(sequences)} files.')
+        print(f'\tSeparated into {len(sequences)} files.')
 
         # Write all of the ground truth sequences to files
         for file_num, seq in enumerate(sequences):
@@ -231,22 +233,28 @@ class MusicXML():
             # Increment current width by the measure's width
             # cur_width += float(measure.attrib['width'])
 
-            # Check if need to create a new page (ie. new sample)
-            child_elems = [e for e in measure]
-            child_tags = [e.tag for e in child_elems]
+            # # Check if need to create a new page (ie. new sample)
+            # child_elems = [e for e in measure]
+            # child_tags = [e.tag for e in child_elems]
 
-            # Get MuseScore4 new_system marker
-            for elem in child_elems:
-                if (elem.tag == 'print' and
-                        ('new-page' in elem.attrib or 'new-system' in elem.attrib)):
-                    new_system_m4 = True
-                    break
+            # # Get MuseScore4 new_system marker
+            # for elem in child_elems:
+            #     if (elem.tag == 'print' and
+            #             ('new-page' in elem.attrib or 'new-system' in elem.attrib)):
+            #         new_system_m4 = True
+            #         break
 
             # # Get MuseScore3 new_page marker
             # if 'print' in child_tags:
             #     print_children = [e.tag for e in list(iter(child_elems[child_tags.index('print')]))]
             #     if 'system-layout' in print_children:
             #         new_page_m3 = True
+
+            new_system_m4 = self.is_last_meassure_in_system(self.root[part_idx][i-1])
+            # if new_system_m4:
+            #     print(f'i: {i}, new_system: {new_system_m4}')
+            # else:
+            #     print(f'i: {i}')
 
             if new_system_m4:
                 # Save the current sequence to be saved
@@ -257,20 +265,24 @@ class MusicXML():
 
                 # Reset polyphonic page and print if necessary
                 if self.polyphonic_page:
-                    print(self.input_file.split('\\')[-1].split('.')[0] + '-' + str(page_num-1))
+                    file_name = re.split('\.', os.path.basename(self.input_file))[0]
+                    poly_page_file = f'{file_name}-{page_num-1}'
+                    print(f'\tpolyphonic page: {poly_page_file}')
                 self.polyphonic_page = False
 
             # Gets the symbolic sequence of each staff in measure of first part
-            measure_staves, skip = self.read_measure(measure, num_staves, new_system_m4, staves, new_score)
+            measure_staves, _ = self.read_measure(measure, num_staves, new_system_m4, staves, new_score)
             new_score = False
 
             # Updates current symbolic sequence of each staff with current measure's symbols
             for j in range(num_staves):
                 staves[j] += measure_staves[j]
 
+            # print(f'len(sequences): {len(sequences)}')
+
             # Skips any measures as needed
-            for j in range(skip-1):
-                next(r_iter)
+            # for j in range(skip-1):
+            #     next(r_iter)
 
             new_system_m4 = False
 
@@ -281,6 +293,19 @@ class MusicXML():
         #     cur_width = int(float(measure.attrib['width']))
 
         return sequences
+
+    def is_last_meassure_in_system(self, measure):
+        """Check if meassure contatins "new-system" or "new-page" tag."""
+        # Check if need to create a new page (ie. new sample)
+        child_elems = [e for e in measure]
+
+        # Get MuseScore4 new_system marker
+        for elem in child_elems:
+            if (elem.tag == 'print' and
+                    ('new-page' in elem.attrib or 'new-system' in elem.attrib)):
+                # print(ET.tostring(measure).decode()[:100])
+                return True
+        return False
 
     def get_sequences_m3(self):
         """
