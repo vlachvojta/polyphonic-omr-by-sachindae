@@ -76,6 +76,9 @@ def main():
     labels_all = []
     input_files = get_files(args.input_folder)
 
+    if not os.path.exists(args.output_folder):
+        os.makedirs(args.output_folder)
+
     # Go through all inputs generating output sequences
     for _, file_name in enumerate(input_files):
         # Create a MusicXML object for generating sequences
