@@ -9,6 +9,7 @@ import sys
 import os
 import argparse
 import time
+import re
 # import logging
 
 from musicxml import MusicXML
@@ -34,7 +35,20 @@ def parseargs():
 
 def save_labels(output_file, labels_db) -> None:
     """Save labels form list of tuples to a file."""
+    print(f'Saving to {output_file}...')
     output_lines = [f'{file} "{labels}"' for file, labels in labels_db]
+
+    if os.path.exists(output_file):
+        with open(output_file, 'r', encoding='utf-8') as f:
+            orig_file = f.read()
+            orig_lines = re.split('\n', orig_file)
+
+            # filter out empty lines
+            orig_lines = list(filter(None, orig_lines))
+            print(f'There is already {len(orig_lines)} lines in the output file. Concatenating.')
+
+        output_lines = sorted(set(output_lines + orig_lines))
+        print(f'{len(output_lines)} after concatenating.')
 
     output = '\n'.join(sorted(output_lines)) + '\n'
 
