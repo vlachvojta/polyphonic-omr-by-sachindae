@@ -29,6 +29,9 @@ class MusicXML():
     UNSET_MUSESCORE_VERSION = -1
     UNSET_WIDTH = -1
 
+    OUTPUT_MODE_STR = 'output_mode_str'
+    OUTPUT_MODE_FILE = 'output_mode_file'
+
     def __init__(self, input_file=None, output_file=None):
         """
         Stores MusicXML file passed in 
@@ -36,8 +39,16 @@ class MusicXML():
 
         # Input/output file path (.musicxml and .semantic)
         self.input_file = input_file
-        self.output_file = output_file
-        print(os.path.basename(self.input_file))
+
+        if not output_file:
+            self.output_mode = self.OUTPUT_MODE_STR
+            self.output_file = input_file
+        else:
+            self.output_mode = self.OUTPUT_MODE_FILE
+            self.output_file = output_file
+
+        # print(f'Working with: {os.path.basename(self.input_file)}')
+        print(f'Working with: {self.input_file}')
 
         # Set default values for key, clef, time signature
         self.key = ''
@@ -133,11 +144,13 @@ class MusicXML():
         # when to proceed to next page (sample) while generating labels
         self.width_cutoff = self.width - margins + 1               
 
-    def write_sequences(self):
-
+    def write_sequences(self) -> list:
         """
+        Convert MusicXML sequence into semantic encodings
         Outputs the sequences of this MusicXML object
-        to the output file (one page = one sequence)
+        to the output file (one page = one sequence) or returns as a string.
+
+        Return list of tuples (filename, sequence)
         """
         # Read all of the sequences of a .musicxml, each page counts as one
         if self.musescore_version == 3:
@@ -149,6 +162,8 @@ class MusicXML():
 
         # fname = self.output_file.split('.')[0]
         print(f'\tSeparated into {len(sequences)} files.')
+
+        labels_out = []
 
         # Write all of the ground truth sequences to files
         for file_num, seq in enumerate(sequences):
@@ -165,16 +180,24 @@ class MusicXML():
 
             # Write the sequence to appropriately named file
             # with open(fname + '-' + str(file_num) + '.semantic', 'w') as out_file:
-            if self.musescore_version == 3:
-                output_file = f'{self.output_file}_s{str(file_num + 1).zfill(2)}.semantic'
-            elif self.musescore_version == 4:
-                output_file = f'{self.output_file}_s{str(file_num).zfill(2)}.semantic'
+            output_file = re.split(r'\.', os.path.basename(self.output_file))[0]
 
-            with open(output_file, 'w', encoding='utf-8') as out_file:
-                out_file.write('')
-                out_file.write((seq + '\n'))
-                out_file.write('')
-                out_file.close()
+            if self.musescore_version == 3:
+                output_file = f'{output_file}_s{str(file_num + 1).zfill(2)}'
+                output_file_path = f'{output_file}.semantic'
+            elif self.musescore_version == 4:
+                output_file = f'{output_file}_s{file_num:02}'
+                output_file_path = f'{output_file}.semantic'
+
+            if self.output_mode == self.OUTPUT_MODE_FILE:
+                with open(output_file, 'w', encoding='utf-8') as out_file:
+                    out_file.write('')
+                    out_file.write((seq + '\n'))
+                    out_file.write('')
+                    out_file.close()
+
+            labels_out.append((output_file, seq))
+        return labels_out
 
     def get_sequences_m4(self):
 
