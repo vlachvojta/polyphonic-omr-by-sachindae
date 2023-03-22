@@ -33,22 +33,50 @@ def parseargs():
     #     help="Activate verbose logging.")
     return parser.parse_args()
 
-def save_labels(output_file, labels_db) -> None:
-    """Save labels form list of tuples to a file."""
+# def label_db_list_to_dict(list_: list) -> dict:
+#     """Go through a list of lines, separate the ID at the beginning and return as dictionary.
+    
+#     key:  sequence ID
+#     value: sequence str"""
+#     list_of_tuples = []
+#     for item in list_:
+#         splitted = re.split(r'\s', item)
+
+#     output = {}
+#     for (k, v) in list_:
+#         output[k] = v
+#     return output
+
+
+# def update_labels(orig_labels: list, new_labels: list) -> list:
+#     ...
+
+
+def save_labels(output_file: str, labels_db: dict) -> None:
+    """Save labels from dictionary to a file."""
+
     output_lines = [f'{file} "{labels}"' for file, labels in labels_db]
-    new_lines_len = len(output_lines)
+    # new_lines_len = len(output_lines)
 
-    if os.path.exists(output_file):
-        with open(output_file, 'r', encoding='utf-8') as f:
-            orig_file = f.read()
-            orig_lines = re.split('\n', orig_file)
+    while True:
+        if not os.path.exists(output_file):
+            break
+        split = re.split(r'\.', output_file)
+        out_file_name_and_path = '.'.join(split[:-1])
+        out_file_ext = split[-1]
+        output_file = f'{out_file_name_and_path}_new.{out_file_ext}'
 
-            # filter out empty lines
-            orig_lines = list(filter(None, orig_lines))
+        # with open(output_file, 'r', encoding='utf-8') as f:
+        #     orig_file = f.read()
+        #     orig_lines = re.split('\n', orig_file)
+        #     orig_lines_dict = 
 
-        output_lines = sorted(set(output_lines + orig_lines))
-        print(f'Saving new {new_lines_len} label lines to original {len(orig_lines)}, '
-              f'new total: {len(output_lines)}')
+        #     # filter out empty lines
+        #     orig_lines = list(filter(None, orig_lines))
+
+        # output_lines = sorted(set(output_lines + orig_lines))
+        # print(f'Saving new {new_lines_len} label lines to original {len(orig_lines)}, '
+        #       f'new total: {len(output_lines)}')
 
     output = '\n'.join(sorted(output_lines)) + '\n'
 
@@ -86,10 +114,7 @@ def main():
         # musicxml_obj = MusicXML(input_file=input_path, output_file=output_path)
 
         # Generate output sequence
-        # try:
         labels_all += musicxml_obj.write_sequences()
-        # except UnicodeDecodeError: # Ignore bad MusicXML
-        #     pass
 
     print('--------------------------------------')
     db_file_name = 'generated_labels.semantic'
