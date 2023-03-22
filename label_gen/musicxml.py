@@ -273,7 +273,7 @@ class MusicXML():
             #     if 'system-layout' in print_children:
             #         new_page_m3 = True
 
-            new_system_m4 = self.is_last_meassure_in_system(self.root[part_idx][i-1])
+            new_system_m4 = self.is_last_meassure_in_system(measure)
             # if new_system_m4:
             #     print(f'i: {i}, new_system: {new_system_m4}')
             # else:
