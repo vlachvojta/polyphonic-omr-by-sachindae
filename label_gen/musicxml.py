@@ -250,9 +250,10 @@ class MusicXML():
         # new_page_m3 = False    # Tracks if just beginning a new page due to "print" element
         new_system_m4 = False  # Tracks if just beginning a new system OR PAGE
 
+        last_part_number = self.get_last_part_number(part_idx)
+
         # Iterate through all measures
         for i, measure in enumerate(r_iter):
-
             # Increment current width by the measure's width
             # cur_width += float(measure.attrib['width'])
 
@@ -273,7 +274,7 @@ class MusicXML():
             #     if 'system-layout' in print_children:
             #         new_page_m3 = True
 
-            new_system_m4 = self.is_last_meassure_in_system(measure)
+            new_system_m4 = self.is_new_measure_system(measure)
             # if new_system_m4:
             #     print(f'i: {i}, new_system: {new_system_m4}')
             # else:
@@ -295,11 +296,15 @@ class MusicXML():
 
             # Gets the symbolic sequence of each staff in measure of first part
             measure_staves, _ = self.read_measure(measure, num_staves, new_system_m4, staves, new_score)
+            # print(measure_staves)
             new_score = False
 
             # Updates current symbolic sequence of each staff with current measure's symbols
             for j in range(num_staves):
                 staves[j] += measure_staves[j]
+
+            if measure.attrib['number'] == last_part_number:
+                sequences.append(staves[0])
 
             # print(f'len(sequences): {len(sequences)}')
 
@@ -317,7 +322,13 @@ class MusicXML():
 
         return sequences
 
-    def is_last_meassure_in_system(self, measure):
+    def get_last_part_number(self, part_id: int):
+        """Get number of the last part in the score."""
+        last_meassure = self.root[part_id][-1]
+        # measure_number = measure.attrib['number']
+        return last_meassure.attrib['number']
+
+    def is_new_measure_system(self, measure):
         """Check if meassure contatins "new-system" or "new-page" tag."""
         # Check if need to create a new page (ie. new sample)
         child_elems = [e for e in measure]
@@ -337,6 +348,11 @@ class MusicXML():
         (list of symbols for each page)
         Uses musicxml file created in MuseScore3
         """
+        print('WARNING: Labels generation from MuseScore3 has not been tested. Ignoring file.')
+        return []
+        # TODO test wheter or not the file has "new-page" or "new-system" tags,
+        # TODO without them labels cannot be generated correctly
+
         # Check if reading input file was succesfull
         if self.root is None:
             return []
