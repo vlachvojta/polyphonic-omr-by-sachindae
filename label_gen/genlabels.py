@@ -28,9 +28,9 @@ def parseargs():
     parser.add_argument(
         '-o', '--output-folder', type=str, required=True,
         help='Path to the output directory to write sequences.')
-    # parser.add_argument(
-    #     '-v', "--verbose", action='store_true', default=False,
-    #     help="Activate verbose logging.")
+    parser.add_argument(
+        '-v', "--verbose", action='store_true', default=False,
+        help="Activate verbose logging.")
     return parser.parse_args()
 
 # def label_db_list_to_dict(list_: list) -> dict:
@@ -107,17 +107,29 @@ def main():
     if not os.path.exists(args.output_folder):
         os.makedirs(args.output_folder)
 
+    if args.verbose:
+        print(f'Found {len(input_files)} input files, generating labels. ')
+    else:
+        print(f'Found {len(input_files)} input files, generating labels. '
+              '(every dot is 200 files, every line is 10_000)')
+
     # Go through all inputs generating output sequences
-    for _, file_name in enumerate(input_files):
+    for i, file_name in enumerate(input_files):
+        if not args.verbose and i % 200 == 0 and i > 0:
+            print('.', end='')
+            if i % 10_000 == 0:
+                print('')
+            sys.stdout.flush()
         # Create a MusicXML object for generating sequences
-        musicxml_obj = MusicXML(input_file=file_name)
+        musicxml_obj = MusicXML(input_file=file_name, verbose=args.verbose)
         # musicxml_obj = MusicXML(input_file=input_path, output_file=output_path)
 
         # Generate output sequence
         labels_all += musicxml_obj.write_sequences()
 
+    print('')
     print('--------------------------------------')
-    db_file_name = 'generated_labels.semantic'
+    db_file_name = 'labels.semantic'
     db_file_name_path = os.path.join(args.output_folder, db_file_name)
     save_labels(db_file_name_path, labels_all)
     print('Results:')

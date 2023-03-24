@@ -15,6 +15,7 @@ TODO implement MuseScore4 purposed pipeline
 import functools
 import os
 import re
+import logging
 
 import xml.etree.ElementTree as ET
 
@@ -32,10 +33,15 @@ class MusicXML():
     OUTPUT_MODE_STR = 'output_mode_str'
     OUTPUT_MODE_FILE = 'output_mode_file'
 
-    def __init__(self, input_file=None, output_file=None):
+    def __init__(self, input_file=None, output_file=None, verbose: bool=False):
         """
         Stores MusicXML file passed in 
         """
+        # self.verbose = verbose
+        if verbose:
+            logging.basicConfig(level=logging.DEBUG, format='[%(levelname)-s]\t- %(message)s')
+        else:
+            logging.basicConfig(level=logging.INFO,format='[%(levelname)-s]\t- %(message)s')
 
         # Input/output file path (.musicxml and .semantic)
         self.input_file = input_file
@@ -48,7 +54,7 @@ class MusicXML():
             self.output_file = output_file
 
         # print(f'Working with: {os.path.basename(self.input_file)}')
-        print(f'Working with: {self.input_file}')
+        logging.debug(f'Working with: {self.input_file}')
 
         # Set default values for key, clef, time signature
         self.key = ''
@@ -161,7 +167,7 @@ class MusicXML():
             return
 
         # fname = self.output_file.split('.')[0]
-        print(f'\tSeparated into {len(sequences)} files.')
+        logging.debug(f'\tSeparated into {len(sequences)} files.')
 
         labels_out = []
 
@@ -291,7 +297,7 @@ class MusicXML():
                 if self.polyphonic_page:
                     file_name = re.split('\.', os.path.basename(self.input_file))[0]
                     poly_page_file = f'{file_name}-{page_num-1}'
-                    print(f'\tpolyphonic page: {poly_page_file}')
+                    logging.debug(f'\tpolyphonic page: {poly_page_file}')
                 self.polyphonic_page = False
 
             # Gets the symbolic sequence of each staff in measure of first part
