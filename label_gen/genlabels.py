@@ -29,6 +29,10 @@ def parseargs():
         '-o', '--output-folder', type=str, required=True,
         help='Path to the output directory to write sequences.')
     parser.add_argument(
+        '-m', '--mode', type=str, default='new-system', choices=['orig', 'new-system'],
+        help=('Set mode of separating labels to systems. Original takes note widths, '
+              'new-system looks for new-system and new-page tags.'))
+    parser.add_argument(
         '-v', "--verbose", action='store_true', default=False,
         help="Activate verbose logging.")
     return parser.parse_args()
@@ -87,7 +91,7 @@ def save_labels(output_file: str, labels_db: dict) -> None:
 def get_files(folder):
     """Get list of existing files in folder with right file extension."""
     # listdir
-    input_files = [f for f in os.listdir(folder)]
+    input_files = os.listdir(folder) if os.path.isdir(folder) else []
 
     # concat with input folder
     input_files = [os.path.join(folder, f) for f in input_files]
@@ -121,7 +125,7 @@ def main():
                 print('')
             sys.stdout.flush()
         # Create a MusicXML object for generating sequences
-        musicxml_obj = MusicXML(input_file=file_name, verbose=args.verbose)
+        musicxml_obj = MusicXML(input_file=file_name, verbose=args.verbose, mode=args.mode)
         # musicxml_obj = MusicXML(input_file=input_path, output_file=output_path)
 
         # Generate output sequence

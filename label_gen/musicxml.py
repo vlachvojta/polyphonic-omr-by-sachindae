@@ -16,10 +16,17 @@ import functools
 import os
 import re
 import logging
+from enum import Enum
 
 import xml.etree.ElementTree as ET
 
 from measure import Measure
+
+
+class ParsingMode(Enum):
+    """Set options for parsing modes. (see genlabels argparse help)"""
+    ORIG = 1
+    NEW_SYSTEM = 2
 
 
 class MusicXML():
@@ -33,7 +40,7 @@ class MusicXML():
     OUTPUT_MODE_STR = 'output_mode_str'
     OUTPUT_MODE_FILE = 'output_mode_file'
 
-    def __init__(self, input_file=None, output_file=None, verbose: bool=False):
+    def __init__(self, input_file=None, output_file=None, verbose: bool=False, mode: str = 'new-system'):
         """
         Stores MusicXML file passed in 
         """
@@ -45,6 +52,11 @@ class MusicXML():
 
         # Input/output file path (.musicxml and .semantic)
         self.input_file = input_file
+
+        if mode == 'orig':
+            self.mode = ParsingMode.ORIG
+        else:
+            self.mode = ParsingMode.NEW_SYSTEM
 
         if not output_file:
             self.output_mode = self.OUTPUT_MODE_STR
@@ -78,9 +90,9 @@ class MusicXML():
         self.musescore_version = self.get_musescore_version()
 
         # Read the width and cutoffs for each page of the .musicxml file
-        if self.musescore_version == 3:
+        if self.mode == ParsingMode.ORIG:
             self.get_width()
-        elif self.musescore_version == 4:
+        elif self.mode == ParsingMode.NEW_SYSTEM:
             self.width_cutoff = self.UNSET_WIDTH
 
     def get_root(self):
@@ -159,10 +171,10 @@ class MusicXML():
         Return list of tuples (filename, sequence)
         """
         # Read all of the sequences of a .musicxml, each page counts as one
-        if self.musescore_version == 3:
-            sequences = self.get_sequences_m3()
-        elif self.musescore_version == 4:
-            sequences = self.get_sequences_m4()
+        if self.mode == ParsingMode.ORIG:
+            sequences = self.get_sequences_orig()
+        elif self.mode == ParsingMode.NEW_SYSTEM:
+            sequences = self.get_sequences_new_system()
         elif self.musescore_version == self.UNSET_MUSESCORE_VERSION:
             return
 
@@ -205,7 +217,7 @@ class MusicXML():
             labels_out.append((output_file, seq))
         return labels_out
 
-    def get_sequences_m4(self):
+    def get_sequences_new_system(self):
 
         """
         Parses MusicXML file and returns sequences corresponding
@@ -347,7 +359,7 @@ class MusicXML():
                 return True
         return False
 
-    def get_sequences_m3(self):
+    def get_sequences_orig(self):
         """
         Parses MusicXML file and returns sequences corresponding
         to the first staff of the first part of the score
