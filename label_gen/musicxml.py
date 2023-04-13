@@ -201,10 +201,10 @@ class MusicXML():
             output_file = re.split(r'\.', os.path.basename(self.output_file))[0]
 
             if self.musescore_version == 3:
-                output_file = f'{output_file}_s{str(file_num + 1).zfill(2)}'
+                output_file = f'{output_file}_s{str(file_num + 1).zfill(3)}'
                 output_file_path = f'{output_file}.semantic'
             elif self.musescore_version == 4:
-                output_file = f'{output_file}_s{file_num:02}'
+                output_file = f'{output_file}_s{file_num:03}'
                 output_file_path = f'{output_file}.semantic'
 
             if self.output_mode == self.OUTPUT_MODE_FILE:
