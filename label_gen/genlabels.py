@@ -133,7 +133,7 @@ def main():
 
     print('')
     print('--------------------------------------')
-    db_file_name = 'labels.semantic'
+    db_file_name = '0_labels.semantic'
     db_file_name_path = os.path.join(args.output_folder, db_file_name)
     save_labels(db_file_name_path, labels_all)
     print('Results:')
