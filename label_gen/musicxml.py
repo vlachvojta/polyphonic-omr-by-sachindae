@@ -7,7 +7,7 @@ MuseScore 3 (original purposed pipeline by sachindae)
 - Separate after "new-page" with "system-layout" child tag.
 - + some stuff with counting widths of meassures and stuff.
 MuseScore 4 (my new purposed pipeline)
-- Separate after every "new-system" or "new-system" tag.
+- Separate after every "new-system" or "new-page" tag.
 TODO implement MuseScore4 purposed pipeline
 """
 
