@@ -50,9 +50,6 @@ def main():
     """Main function for simple testing"""
     args = parseargs()
 
-    print(type(args.input_files))
-    print(args.input_files)
-
     start = time.time()
     ReverseConverter(
         input_files=args.input_files,
@@ -78,6 +75,10 @@ class ReverseConverter:
         ReverseConverter.prepare_output_folder(output_folder)
 
     def __call__(self):
+        if not self.input_files:
+            logging.error('No input files provided. Exiting...')
+            sys.exit(1)
+
         # For every file, convert it to MusicXML
         for input_file_name in self.input_files:
             logging.debug(f'Reading file {input_file_name}')
@@ -93,10 +94,13 @@ class ReverseConverter:
 
                 stave_id = match.group(1)
                 labels = match.group(2)
+                output_file_name = os.path.join(self.output_folder, f'{stave_id}.xml')
 
                 parsed_labels = semantic_to_music21(labels)
+                if isinstance(parsed_labels, music.stream.Stream):
+                    logging.info(f'Parsing successfully completed.')
 
-                output_file_name = os.path.join(self.output_folder, f'{stave_id}.xml')
+                # parsed_labels.show()  # Show parsed labels in some visual program (MuseScore by default)
 
                 # TODO: write tree to file output_file_name / use music21 native musicxml export
 
