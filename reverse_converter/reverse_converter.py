@@ -1,4 +1,4 @@
-#!/usr/bin/python3.8
+#!/usr/bin/python3.10
 """Script for converting sequential representation of music labels (produced by the model) to standard musicxml format
 usable by external tools.
 
@@ -7,7 +7,7 @@ Contact: xvlach22@vutbr.cz
 
 TODO: write docu after development
 
-Modes:  ??? TODO: decide which mode to implement
+Mode options:  ??? TODO: decide which mode to implement (so far am going with 1to0)
     - 1to1 (1 label-sequence => 1 XML file)
     - Nto1 (group of label-sequences with same ID prefix => 1 XML file)
 """
@@ -18,6 +18,9 @@ import os
 import sys
 import time
 import logging
+
+import music21 as music
+from semantic_to_music21 import semantic_to_music21
 
 
 def parseargs():
@@ -60,34 +63,6 @@ def main():
     print(f'Total time: {end - start}')
 
 
-def prepare_output_folder(output_folder: str):
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
-
-def get_input_files(input_files: list[str] = None):
-    existing_files = []
-
-    if not input_files:
-        return []
-
-    for input_file in input_files:
-        if os.path.isfile(input_file):
-            existing_files.append(input_file)
-
-    return existing_files
-
-
-def read_file_lines(input_file: str) -> list[str]:
-    with open(input_file, 'r', encoding='utf-8') as f:
-        lines = f.read().splitlines()
-
-    if not lines:
-        logging.warning(f'File {input_file} is empty!')
-
-    return [line for line in lines if line]
-
-
 class ReverseConverter:
     def __init__(self, input_files: list[str] = None, output_folder: str = 'output_musicxml', verbose: bool = False):
         self.output_folder = output_folder
@@ -99,14 +74,14 @@ class ReverseConverter:
 
         logging.debug('Hello World! (from ReverseConverter)')
 
-        self.input_files = get_input_files(input_files)
-        prepare_output_folder(output_folder)
+        self.input_files = ReverseConverter.get_input_files(input_files)
+        ReverseConverter.prepare_output_folder(output_folder)
 
     def __call__(self):
         # For every file, convert it to MusicXML
         for input_file_name in self.input_files:
             logging.debug(f'Reading file {input_file_name}')
-            lines = read_file_lines(input_file_name)
+            lines = ReverseConverter.read_file_lines(input_file_name)
 
             for i, line in enumerate(lines):
                 match = re.fullmatch(r'([a-zA-Z0-9_]+) [0-9]+ \"([\S\s]+)\"', line)
@@ -119,7 +94,7 @@ class ReverseConverter:
                 stave_id = match.group(1)
                 labels = match.group(2)
 
-                parsed_labels = self.convert_labels(labels)
+                parsed_labels = semantic_to_music21(labels)
 
                 output_file_name = os.path.join(self.output_folder, f'{stave_id}.xml')
 
@@ -129,6 +104,34 @@ class ReverseConverter:
         measures = re.split(r'|', labels)
 
         # TODO: parse labels using music21 library which also supports export to musicxml
+
+    @staticmethod
+    def prepare_output_folder(output_folder: str):
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+    @staticmethod
+    def get_input_files(input_files: list[str] = None):
+        existing_files = []
+
+        if not input_files:
+            return []
+
+        for input_file in input_files:
+            if os.path.isfile(input_file):
+                existing_files.append(input_file)
+
+        return existing_files
+
+    @staticmethod
+    def read_file_lines(input_file: str) -> list[str]:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            lines = f.read().splitlines()
+
+        if not lines:
+            logging.warning(f'File {input_file} is empty!')
+
+        return [line for line in lines if line]
 
 
 if __name__ == '__main__':
