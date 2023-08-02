@@ -7,7 +7,11 @@ Contact: xvlach22@vutbr.cz
 """
 
 import re
+from enum import Enum
+import logging
+
 import music21 as music
+from symbol import Symbol, SymbolType
 
 
 def semantic_to_music21(labels: str) -> music.stream:
@@ -16,14 +20,14 @@ def semantic_to_music21(labels: str) -> music.stream:
     Args:
         labels (str): one line of labels in semantic format without any prefixes.
     """
-    labels_parsed = convert_line_to_groups(labels)
-    print(labels_parsed)
+    labels = labels.strip('"')
 
-    measures = []
-    for measure in labels_parsed:
-        for label_group in measure:
-            if not label_group:
-                continue
+    measures_labels = re.split(r'\s\+\sbarline\s\+\s', labels)
+    measures = [Measure(measure_label) for measure_label in measures_labels if measure_label]
+
+    logging.debug('Printing measures:')
+    for measure in measures:
+        print(measure)
 
     DEFAULT_RETURN_VALUE = music.stream.Stream([music.note.Note('C4', type='half'),
                                                 music.note.Note('D4', type='half'),
@@ -31,56 +35,60 @@ def semantic_to_music21(labels: str) -> music.stream:
     return DEFAULT_RETURN_VALUE
 
 
-def label_to_symbol(label: str) -> music.stream:
-    """Converts one label to music21 format.
+class Measure:
+    def __init__(self, labels: str):
+        """Takes labels corresponding to a single measure."""
+        self.labels = labels
+        self.is_polyphonic = None
 
-    Args:
-        label (str): one symbol in semantic format as string
-    """
-    out = "UNKNOWN"
+        label_groups = re.split(r'\s\+\s', self.labels.strip(''))
+        self.label_groups = [SymbolGroup(label_group) for label_group in label_groups if label_group]
 
-    return out
+    def get_is_polyphonic(self) -> bool:
+        """Returns True if there are more than 1 notes in the same label_group with different lengths."""
+        if self.is_polyphonic is not None:
+            return self.is_polyphonic
+
+        # TODO: test this logic
+        self.is_polyphonic = all([group.type in [SymbolGroupType.SYMBOL, SymbolGroupType.CHORD]
+                                  for group in self.label_groups])
+        return self.is_polyphonic
+
+    def __str__(self):
+        label_groups_str = '\n'.join([str(group) for group in self.label_groups])
+        poly = 'polyphonic' if self.get_is_polyphonic() else 'monophonic'
+        return (f'MEASURE: ({poly}) \n'
+                f'labels: {self.labels}\n'
+                f'{label_groups_str}'
+                f'is_polyphonic: {self.is_polyphonic}\n')
 
 
-def convert_line_to_groups(labels: str) -> list:
-    """Converts one line of labels in semantic format to a list of lists of lists. See example below.
+class SymbolGroupType(Enum):
+    SYMBOL = 0
+    CHORD = 1
+    TUPLE = 2
+    UNKNOWN = 3
 
-    Args:
-        labels (str): one line of labels in semantic format without any prefixes.
 
-    Returns:
-        list: list of lists of lists. Each list represents one measure. Each inner list represents one label group.
-            Each inner-inner list represents labels in the group.
+class SymbolGroup:
+    """Represents one label group in a measure. Consisting of 1 to n labels/symbols."""
+    type = SymbolGroupType.UNKNOWN
 
-    Example with simplified labels:
-        'C4 + D4 E4 + barline + G4 A4 + barline ' ->
-        [
-            [
-                ['C4'],
-                ['D4', 'E4']
-            ],
-            [
-                ['G4', 'A4']
-            ]
-        ]
-    """
-    # remove parentheses if there
-    labels = labels.strip('"')
+    def __init__(self, labels: str):
+        self.labels = labels
+        label_group_parsed = re.split(r'\s', self.labels.strip(''))
+        self.symbols = [Symbol(label_group) for label_group in label_group_parsed if label_group]
+        if len(self.symbols) == 0:
+            logging.warning(f'No symbols found in label group: {self.labels}')
+        elif len(self.symbols) == 1:
+            self.type = SymbolGroupType.SYMBOL
+        else:
+            self.type = SymbolGroupType.UNKNOWN
+            # TODO: check if all notes in group have the same length
+            # self.type = SymbolGroupType.CHORD # if all notes in group have the same length
+            # self.type = SymbolGroupType.TUPLE # if notes in group have different lengths
 
-    measures = re.split(r'\s\+\sbarline\s\+\s', labels)
-
-    labels_parsed = []
-    for measure in measures:
-        label_groups = re.split(r'\s\+\s', measure.strip(''))
-
-        measure_parsed = []
-        for label_group in label_groups:
-            label_group_parsed = re.split(r'\s', label_group)
-            label_group_parsed = list(filter(None, label_group_parsed))
-            measure_parsed.append(label_group_parsed)
-
-            if measure_parsed[-1] == ['barline']:
-                measure_parsed.pop()
-
-        labels_parsed.append(measure_parsed)
-    return labels_parsed
+    def __str__(self):
+        symbols_str = '\n'.join([str(symbol) for symbol in self.symbols])
+        return (f'\t{self.labels} =>\n'
+                f'{symbols_str}')
