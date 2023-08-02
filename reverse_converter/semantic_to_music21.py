@@ -59,8 +59,7 @@ class Measure:
         poly = 'polyphonic' if self.get_is_polyphonic() else 'monophonic'
         return (f'MEASURE: ({poly}) \n'
                 f'labels: {self.labels}\n'
-                f'{label_groups_str}'
-                f'is_polyphonic: {self.is_polyphonic}\n')
+                f'{label_groups_str}')
 
 
 class SymbolGroupType(Enum):
