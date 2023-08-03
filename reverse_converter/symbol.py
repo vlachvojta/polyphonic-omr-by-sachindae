@@ -33,9 +33,16 @@ class Symbol:
     def __init__(self, label: str):
         self.label_str = label
         self.symbol_type, self.symbol = Symbol.label_to_symbol(label)
+        self.length = self.get_length()
 
     def __str__(self):
         return f'\t\t\t({self.symbol_type}) {self.symbol}'
+
+    def get_length(self) -> int:
+        if self.symbol_type in [SymbolType.REST, SymbolType.NOTE, SymbolType.GRACENOTE]:
+            return self.symbol.duration.quarterLength
+        else:
+            return 0
 
     @staticmethod
     def label_to_symbol(label: str):  # -> (SymbolType, music.object):

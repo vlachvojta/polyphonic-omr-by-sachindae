@@ -17,9 +17,9 @@ class Note:
     of current measure. This class is used as an internal representation of a note before knowing its real height.
     Real height is then stored directly in `self.note` as music.note.Note object.
     """
-    def __init__(self, length: music.duration.Duration, height: str,
+    def __init__(self, duration: music.duration.Duration, height: str,
                  fermata: music.expressions.Fermata = None, gracenote: bool = False):
-        self.length = length
+        self.duration = duration
         self.height = height
         self.fermata = fermata
         self.note = None
@@ -42,13 +42,13 @@ class Note:
         return None
 
     def __str__(self):
-        return f'note {self.height} {self.length}'
+        return f'note {self.height} {self.duration}'
 
 
 class MultiRest:
     """Represents one multi rest in a label group."""
-    def __init__(self, length: int = 0):
-        self.length = length
+    def __init__(self, duration: int = 0):
+        self.duration = duration
 
 
 class Tie:

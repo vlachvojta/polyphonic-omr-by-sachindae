@@ -29,11 +29,7 @@ def semantic_to_music21(labels: str) -> music.stream:
     for measure in measures:
         print(measure)
 
-
-
     # TODO Go through all measures and convert Note objects to Music21 objects
-
-    # TODO Go through all measures and find out polyphonic and monophonic
 
     DEFAULT_RETURN_VALUE = music.stream.Stream([music.note.Note('C4', type='half'),
                                                 music.note.Note('D4', type='half'),
@@ -42,28 +38,29 @@ def semantic_to_music21(labels: str) -> music.stream:
 
 
 class Measure:
+    _is_polyphonic = None
+
     def __init__(self, labels: str):
         """Takes labels corresponding to a single measure."""
         self.labels = labels
-        self.is_polyphonic = None
         self.keysignature = None
 
         label_groups = re.split(r'\s\+\s', self.labels.strip(''))
         self.label_groups = [SymbolGroup(label_group) for label_group in label_groups if label_group]
 
-    def get_is_polyphonic(self) -> bool:
+    @property
+    def is_polyphonic(self) -> bool:
         """Returns True if there are more than 1 notes in the same label_group with different lengths."""
-        if self.is_polyphonic is not None:
-            return self.is_polyphonic
+        if self._is_polyphonic is not None:
+            return self._is_polyphonic
 
         # TODO: test this logic
-        self.is_polyphonic = all([group.type in [SymbolGroupType.SYMBOL, SymbolGroupType.CHORD]
-                                  for group in self.label_groups])
-        return self.is_polyphonic
+        self._is_polyphonic = any(group.type == SymbolGroupType.TUPLE for group in self.label_groups)
+        return self._is_polyphonic
 
     def __str__(self):
         label_groups_str = '\n'.join([str(group) for group in self.label_groups])
-        poly = 'polyphonic' if self.get_is_polyphonic() else 'monophonic'
+        poly = 'polyphonic' if self.is_polyphonic else 'monophonic'
         return (f'MEASURE: ({poly}) \n'
                 f'labels: {self.labels}\n'
                 f'{label_groups_str}')
@@ -73,28 +70,35 @@ class SymbolGroupType(Enum):
     SYMBOL = 0
     CHORD = 1
     TUPLE = 2
-    UNKNOWN = 3
+    EMPTY = 3
+    UNKNOWN = 99
 
 
 class SymbolGroup:
     """Represents one label group in a measure. Consisting of 1 to n labels/symbols."""
-    type = SymbolGroupType.UNKNOWN
 
     def __init__(self, labels: str):
         self.labels = labels
+        self.type = SymbolGroupType.UNKNOWN
+
         label_group_parsed = re.split(r'\s', self.labels.strip(''))
         self.symbols = [Symbol(label_group) for label_group in label_group_parsed if label_group]
-        if len(self.symbols) == 0:
-            logging.warning(f'No symbols found in label group: {self.labels}')
-        elif len(self.symbols) == 1:
-            self.type = SymbolGroupType.SYMBOL
-        else:
-            self.type = SymbolGroupType.UNKNOWN
-            # TODO: check if all notes in group have the same length
-            # self.type = SymbolGroupType.CHORD # if all notes in group have the same length
-            # self.type = SymbolGroupType.TUPLE # if notes in group have different lengths
+
+        self.type = self.get_type()
 
     def __str__(self):
         symbols_str = '\n'.join([str(symbol) for symbol in self.symbols])
-        return (f'\t{self.labels} =>\n'
+        return (f'\t({self.type}) {self.labels} =>\n'
                 f'{symbols_str}')
+
+    def get_type(self):
+        if len(self.symbols) == 0:
+            logging.warning(f'No symbols found in label group: {self.labels}')
+            return SymbolGroupType.UNKNOWN
+        if len(self.symbols) == 1:
+            return SymbolGroupType.SYMBOL
+        else:
+            same_length = all(symbol.get_length() == self.symbols[0].get_length()
+                              for symbol in self.symbols)
+
+            return SymbolGroupType.CHORD if same_length else SymbolGroupType.TUPLE
