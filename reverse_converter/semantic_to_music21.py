@@ -29,6 +29,12 @@ def semantic_to_music21(labels: str) -> music.stream:
     for measure in measures:
         print(measure)
 
+
+
+    # TODO Go through all measures and convert Note objects to Music21 objects
+
+    # TODO Go through all measures and find out polyphonic and monophonic
+
     DEFAULT_RETURN_VALUE = music.stream.Stream([music.note.Note('C4', type='half'),
                                                 music.note.Note('D4', type='half'),
                                                 music.note.Note('E')])
@@ -40,6 +46,7 @@ class Measure:
         """Takes labels corresponding to a single measure."""
         self.labels = labels
         self.is_polyphonic = None
+        self.keysignature = None
 
         label_groups = re.split(r'\s\+\s', self.labels.strip(''))
         self.label_groups = [SymbolGroup(label_group) for label_group in label_groups if label_group]
