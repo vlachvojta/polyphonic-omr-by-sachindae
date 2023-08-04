@@ -119,6 +119,11 @@ class Measure:
         else:
             logging.info("Polyphonic measures not supported YET, returning empty measure.")
             self.repr = music.stream.Measure()
+
+            voice_counts = [symbol_group.get_voice_count() for symbol_group in self.symbol_groups]
+            voice_count = max(voice_counts)
+            # TODO Continue here with heuristic about grouping symbol groups to voices.
+            # Store accumulator of durations in every voice and add next note to the shortest ??
         return self.repr
 
 
@@ -237,3 +242,13 @@ class SymbolGroup:
         # logging.debug('Printing tuple data after recursive conversion')
         # for group in self.tuple_data:
         #     print(group)
+
+    def get_voice_count(self):
+        """Returns the number of voices in the label group (count of groups in tuple group)
+
+        Returns:
+            int: number of voices in the label group.
+        """
+        if not self.type == SymbolGroupType.TUPLE:
+            return 1
+        return len(self.tuple_data)
