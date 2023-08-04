@@ -23,6 +23,11 @@ def semantic_to_music21(labels: str) -> music.stream:
     labels = labels.strip('"')
 
     measures_labels = re.split(r'\s\+\sbarline\s\+\s', labels)
+    measures_labels = [measure_label.strip() for measure_label in measures_labels if measure_label]
+
+    if re.match(r'.*\s\+\sbarline$', measures_labels[-1]):
+        measures_labels[-1] = measures_labels[-1][:-len(' + barline ')]
+
     measures = [Measure(measure_label) for measure_label in measures_labels if measure_label]
 
     logging.debug('Printing measures:')
@@ -45,7 +50,7 @@ class Measure:
         self.labels = labels
         self.keysignature = None
 
-        label_groups = re.split(r'\s\+\s', self.labels.strip(''))
+        label_groups = re.split(r'\s\+\s', self.labels)
         self.label_groups = [SymbolGroup(label_group) for label_group in label_groups if label_group]
 
     @property
@@ -81,7 +86,7 @@ class SymbolGroup:
         self.labels = labels
         self.type = SymbolGroupType.UNKNOWN
 
-        label_group_parsed = re.split(r'\s', self.labels.strip(''))
+        label_group_parsed = re.split(r'\s', self.labels.strip())
         self.symbols = [Symbol(label_group) for label_group in label_group_parsed if label_group]
 
         self.type = self.get_type()
