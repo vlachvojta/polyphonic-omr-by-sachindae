@@ -30,11 +30,13 @@ def semantic_to_music21(labels: str) -> music.stream:
 
     measures = [Measure(measure_label) for measure_label in measures_labels if measure_label]
 
+    previous_measure_key = None
+    for measure in measures:
+        previous_measure_key = measure.get_key(previous_measure_key)
+
     logging.debug('Printing measures:')
     for measure in measures:
         print(measure)
-
-    # TODO Go through all measures and convert Note objects to Music21 objects
 
     DEFAULT_RETURN_VALUE = music.stream.Stream([music.note.Note('C4', type='half'),
                                                 music.note.Note('D4', type='half'),
@@ -44,14 +46,22 @@ def semantic_to_music21(labels: str) -> music.stream:
 
 class Measure:
     _is_polyphonic = None
+    keysignature = None
 
     def __init__(self, labels: str):
         """Takes labels corresponding to a single measure."""
         self.labels = labels
-        self.keysignature = None
 
         label_groups = re.split(r'\s\+\s', self.labels)
-        self.label_groups = [SymbolGroup(label_group) for label_group in label_groups if label_group]
+        self.symbol_groups = [SymbolGroup(label_group) for label_group in label_groups if label_group]
+
+    def __str__(self):
+        label_groups_str = '\n'.join([str(group) for group in self.symbol_groups])
+        poly = 'polyphonic' if self.is_polyphonic else 'monophonic'
+        return (f'MEASURE: ({poly}) \n'
+                f'key signature: {self.keysignature}\n'
+                f'labels: {self.labels}\n'
+                f'{label_groups_str}')
 
     @property
     def is_polyphonic(self) -> bool:
@@ -59,16 +69,40 @@ class Measure:
         if self._is_polyphonic is not None:
             return self._is_polyphonic
 
-        # TODO: test this logic
-        self._is_polyphonic = any(group.type == SymbolGroupType.TUPLE for group in self.label_groups)
+        self._is_polyphonic = any(group.type == SymbolGroupType.TUPLE for group in self.symbol_groups)
         return self._is_polyphonic
 
-    def __str__(self):
-        label_groups_str = '\n'.join([str(group) for group in self.label_groups])
-        poly = 'polyphonic' if self.is_polyphonic else 'monophonic'
-        return (f'MEASURE: ({poly}) \n'
-                f'labels: {self.labels}\n'
-                f'{label_groups_str}')
+    def get_key(self, previous_measure_key: music.key.Key) -> music.key.Key:
+        """Returns the key of the measure.
+
+        Args:
+            previous_measure_key (music.key.Key): key of the previous measure.
+
+        Returns:
+            music.key.Key: key of the current measure.
+        """
+        if self.keysignature is not None:
+            return self.keysignature
+
+        for symbol_group in self.symbol_groups:
+            key = symbol_group.get_key()
+            print(key)
+            if key is not None:
+                self.set_key(key)
+                break
+        else:
+            self.set_key(previous_measure_key)
+        return self.keysignature
+
+    def set_key(self, key: music.key.Key):
+        """Sets the key of the measure. Send key to all symbols groups to represent notes in real height.
+
+        Args:
+            key (music.key.Key): key of the current measure.
+        """
+        self.keysignature = key
+        for symbol_group in self.symbol_groups:
+            symbol_group.set_key(key)
 
 
 class SymbolGroupType(Enum):
@@ -107,3 +141,22 @@ class SymbolGroup:
                               for symbol in self.symbols)
 
             return SymbolGroupType.CHORD if same_length else SymbolGroupType.TUPLE
+
+    def get_key(self) -> music.key.Key | None:
+        """Go through all labels and find key signature or return None.
+
+        Returns:
+            music.key.Key: key signature of the label group or None.
+        """
+        if not self.type == SymbolGroupType.SYMBOL:
+            return None
+
+        for symbol in self.symbols:
+            if symbol.type == SymbolType.KEY_SIGNATURE:
+                return symbol.repr
+
+        return None
+
+    def set_key(self, key):
+        for symbol in self.symbols:
+            symbol.set_key(key)

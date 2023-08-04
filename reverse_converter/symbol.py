@@ -32,17 +32,21 @@ class Symbol:
 
     def __init__(self, label: str):
         self.label_str = label
-        self.symbol_type, self.symbol = Symbol.label_to_symbol(label)
+        self.type, self.repr = Symbol.label_to_symbol(label)
         self.length = self.get_length()
 
     def __str__(self):
-        return f'\t\t\t({self.symbol_type}) {self.symbol}'
+        return f'\t\t\t({self.type}) {self.repr}'
 
     def get_length(self) -> int:
-        if self.symbol_type in [SymbolType.REST, SymbolType.NOTE, SymbolType.GRACENOTE]:
-            return self.symbol.duration.quarterLength
+        if self.type in [SymbolType.REST, SymbolType.NOTE, SymbolType.GRACENOTE]:
+            return self.repr.duration.quarterLength
         else:
             return 0
+
+    def set_key(self, key):
+        if self.type in [SymbolType.NOTE, SymbolType.GRACENOTE]:
+            self.repr = self.repr.get_real_height(key)
 
     @staticmethod
     def label_to_symbol(label: str):  # -> (SymbolType, music.object):
