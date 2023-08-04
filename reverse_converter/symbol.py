@@ -31,7 +31,7 @@ class Symbol:
     """Represents one label in a label group."""
 
     def __init__(self, label: str):
-        self.label_str = label
+        self.label = label
         self.type, self.repr = Symbol.label_to_symbol(label)
         self.length = self.get_length()
 

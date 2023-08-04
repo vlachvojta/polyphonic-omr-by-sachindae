@@ -26,7 +26,7 @@ def semantic_to_music21(labels: str) -> music.stream:
     measures_labels = [measure_label.strip() for measure_label in measures_labels if measure_label]
 
     if re.match(r'.*\s\+\sbarline$', measures_labels[-1]):
-        measures_labels[-1] = measures_labels[-1][:-len(' + barline ')]
+        measures_labels[-1] = measures_labels[-1][:-len(' + barline')]
 
     measures = [Measure(measure_label) for measure_label in measures_labels if measure_label]
 
@@ -86,7 +86,6 @@ class Measure:
 
         for symbol_group in self.symbol_groups:
             key = symbol_group.get_key()
-            print(key)
             if key is not None:
                 self.set_key(key)
                 break
@@ -133,6 +132,7 @@ class SymbolGroupType(Enum):
 
 class SymbolGroup:
     """Represents one label group in a measure. Consisting of 1 to n labels/symbols."""
+    tuple_data = None  # Tuple data consists of a list of symbol groups where symbols have same lengths.
 
     def __init__(self, labels: str):
         self.labels = labels
@@ -142,11 +142,22 @@ class SymbolGroup:
         self.symbols = [Symbol(label_group) for label_group in label_group_parsed if label_group]
 
         self.type = self.get_type()
+        if self.type == SymbolGroupType.TUPLE:
+            self.create_tuple_data()
 
     def __str__(self):
-        symbols_str = '\n'.join([str(symbol) for symbol in self.symbols])
-        return (f'\t({self.type}) {self.labels} =>\n'
-                f'{symbols_str}')
+        if not self.type == SymbolGroupType.TUPLE:
+            symbols_str = '\n'.join([str(symbol) for symbol in self.symbols])
+            return (f'\t({self.type}) {self.labels} =>\n'
+                    f'{symbols_str}')
+        out = []
+        for group in self.tuple_data:
+            out.append(str(group))
+        out = '\n'.join(out)
+
+        return (f'\tTUPLE BEGIN:\n'
+                f'{out}\n'
+                f'\tTUPLE END')
 
     def get_type(self):
         if len(self.symbols) == 0:
@@ -157,7 +168,6 @@ class SymbolGroup:
         else:
             same_length = all(symbol.get_length() == self.symbols[0].get_length()
                               for symbol in self.symbols)
-
             return SymbolGroupType.CHORD if same_length else SymbolGroupType.TUPLE
 
     def get_key(self) -> music.key.Key | None:
@@ -198,3 +208,32 @@ class SymbolGroup:
             return music.stream.Stream()
         else:
             return music.stream.Stream()
+
+    def create_tuple_data(self):
+        """Create tuple data for the label group.
+
+        Tuple data consists of a list of symbol groups where symbols have same lengths.
+        """
+        list_of_groups = [[self.symbols[0]]]
+        for symbol in self.symbols[1:]:
+            symbol_length = symbol.get_length()
+            for group in list_of_groups:
+                if symbol_length == group[0].get_length():
+                    group.append(symbol)
+                    break
+            else:
+                list_of_groups.append([symbol])
+
+        # logging.debug(list_of_groups)
+
+        self.tuple_data = []
+        for group in list_of_groups:
+            labels = [symbol.label for symbol in group]
+            labels = ' '.join(labels)
+            # logging.debug(f'labels after join: {labels}')
+            self.tuple_data.append(SymbolGroup(labels))
+
+        # # Debug print
+        # logging.debug('Printing tuple data after recursive conversion')
+        # for group in self.tuple_data:
+        #     print(group)
