@@ -94,20 +94,18 @@ class ReverseConverter:
 
                 stave_id = match.group(1)
                 labels = match.group(2)
-                output_file_name = os.path.join(self.output_folder, f'{stave_id}.xml')
+                output_file_name = os.path.join(self.output_folder, f'{stave_id}.musicxml')
 
                 parsed_labels = semantic_to_music21(labels)
-                if isinstance(parsed_labels, music.stream.Stream):
-                    logging.info(f'Parsing successfully completed.')
+                if not isinstance(parsed_labels, music.stream.Stream):
+                    logging.error(f'Labels could not be parsed. Skipping line {i} in file {input_file_name}: '
+                                  f'({line[:min(50, len(line))]}...)')
+                    continue
 
-                # parsed_labels.show()  # Show parsed labels in some visual program (MuseScore by default)
+                logging.info(f'Parsing successfully completed.')
+                parsed_labels.show()  # Show parsed labels in some visual program (MuseScore by default)
 
                 # TODO: write tree to file output_file_name / use music21 native musicxml export
-
-    def convert_labels(self, labels):
-        measures = re.split(r'|', labels)
-
-        # TODO: parse labels using music21 library which also supports export to musicxml
 
     @staticmethod
     def prepare_output_folder(output_folder: str):

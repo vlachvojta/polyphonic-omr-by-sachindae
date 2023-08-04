@@ -38,15 +38,15 @@ def semantic_to_music21(labels: str) -> music.stream:
     for measure in measures:
         print(measure)
 
-    DEFAULT_RETURN_VALUE = music.stream.Stream([music.note.Note('C4', type='half'),
-                                                music.note.Note('D4', type='half'),
-                                                music.note.Note('E')])
-    return DEFAULT_RETURN_VALUE
+    measures = [measure.encode_to_music21() for measure in measures]
+    stream = music.stream.Stream(music.stream.Part(measures))
+    return stream
 
 
 class Measure:
     _is_polyphonic = None
     keysignature = None
+    repr = None
 
     def __init__(self, labels: str):
         """Takes labels corresponding to a single measure."""
@@ -104,6 +104,24 @@ class Measure:
         for symbol_group in self.symbol_groups:
             symbol_group.set_key(key)
 
+    def encode_to_music21(self) -> music.stream.Measure:
+        """Encodes the measure to music21 format.
+
+        Returns:
+            music.stream.Measure: music21 representation of the measure.
+        """
+        if self.repr is not None:
+            return self.repr
+
+        self.repr = music.stream.Measure()
+        if not self._is_polyphonic:
+            for symbol_group in self.symbol_groups:
+                self.repr.append(symbol_group.encode_to_music21_monophonic())
+        else:
+            logging.info("Polyphonic measures not supported YET, returning empty measure.")
+            self.repr = music.stream.Measure()
+        return self.repr
+
 
 class SymbolGroupType(Enum):
     SYMBOL = 0
@@ -160,3 +178,23 @@ class SymbolGroup:
     def set_key(self, key):
         for symbol in self.symbols:
             symbol.set_key(key)
+
+    def encode_to_music21_monophonic(self):
+        """Encodes the label group to music21 format.
+
+        Returns:
+            music.object: music21 representation of the label group.
+        """
+        if self.type == SymbolGroupType.SYMBOL:
+            return self.symbols[0].repr
+        elif self.type == SymbolGroupType.CHORD:
+            notes = [symbol.repr for symbol in self.symbols]
+            return music.chord.Chord(notes)
+            # return music.stream.Stream(music.chord.Chord(notes))
+        elif self.type == SymbolGroupType.EMPTY:
+            return music.stream.Stream()
+        elif self.type == SymbolGroupType.TUPLE:
+            logging.info(f'Tuple label group not supported yet, returning empty stream.')
+            return music.stream.Stream()
+        else:
+            return music.stream.Stream()
