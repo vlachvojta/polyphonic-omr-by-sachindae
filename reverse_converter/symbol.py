@@ -13,6 +13,7 @@ import re
 
 import music21 as music
 from internal_symbols import Note, MultiRest, Tie
+from symbol_lengths import label_to_length
 
 
 class SymbolType(Enum):
@@ -167,7 +168,7 @@ class Symbol:
         if not note_length or not note_height:
             return_default_note()
 
-        return Note(Symbol.label_length(note_length),
+        return Note(label_to_length(note_length),
                     note_height, fermata=fermata, gracenote=gracenote)
 
     @staticmethod
@@ -186,7 +187,7 @@ class Symbol:
 
         rest, fermata = Symbol.check_fermata(rest)
 
-        duration = Symbol.label_length(rest)
+        duration = label_to_length(rest)
 
         rest = music.note.Rest()
         rest.duration = duration
@@ -217,43 +218,6 @@ class Symbol:
             return music.meter.TimeSignature('cut')
         else:
             return music.meter.TimeSignature(timesignature)
-
-    @staticmethod
-    def label_length(length: str) -> music.duration.Duration:
-        """Return length of label as music21 duration.
-
-        Args:
-            length (str): only length part of one label in semantic format as string
-
-        Returns:
-            music.duration.Duration: one duration in music21 format
-        """
-        def return_default_duration():
-            logging.info(f'Unknown duration label: {length}, returning default duration.')
-            return music.duration.Duration(1)
-
-        dots = 0
-        while length.endswith('.'):
-            dots += 1
-            length = length[:-1]
-
-        symbol_to_length = {
-            'hundred_twenty_eighth': '128th',
-            'sixty_fourth': '64th',
-            'thirty_second': '32th',
-            'sixteenth': '16th',
-            'eighth': 'eighth',
-            'quarter': 'quarter',
-            'half': 'half',
-            'whole': 'whole',
-            'double_whole': 2*4,
-            'quadruple_whole': 4*4
-        }
-
-        if length in symbol_to_length:
-            return music.duration.Duration(symbol_to_length[length], dots=dots)
-        else:
-            return return_default_duration()
 
     @staticmethod
     def check_fermata(label: str) -> (str, music.expressions.Fermata):

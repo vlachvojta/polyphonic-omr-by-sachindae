@@ -1,5 +1,5 @@
 #!/usr/bin/python3.10
-"""Script containing internal representations of symbols representing parsed semantic labels..
+"""Script containing internal representations of symbols representing parsed semantic labels.
 
 Primarily used for compatibility with music21 library.
 
