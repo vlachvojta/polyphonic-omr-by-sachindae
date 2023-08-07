@@ -38,7 +38,12 @@ class Symbol:
     def __str__(self):
         return f'\t\t\t({self.type}) {self.repr}'
 
-    def get_length(self) -> int:
+    def get_length(self) -> float:
+        """Returns the length of the symbol in quarter notes.
+
+        (half note: 2 quarter notes, eighth note: 0.5 quarter notes, ...)
+        If the symbol does not have musical length, returns 0.
+        """
         if self.type in [SymbolType.REST, SymbolType.NOTE, SymbolType.GRACENOTE]:
             return self.repr.duration.quarterLength
         else:
