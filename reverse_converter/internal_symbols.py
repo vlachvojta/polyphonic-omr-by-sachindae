@@ -48,19 +48,6 @@ class Note:
             # Key doesn't affect real not height
             self.note = music.note.Note(self.height, duration=self.duration)
 
-        # if not pitches or self.height[0] not in pitches:
-        #     # Key doesn't affect real not height
-        #     self.note = music.note.Note(self.height, duration=self.duration)
-        # elif self.height[1] == 'N':
-        #     # Note ignores key signature and real height is natural height (without any accidentals)
-        #     self.note = music.note.Note(self.height, duration=self.duration)
-        # elif not self.height[1:-1]:
-        #     # Note has no accidental on its own and takes accidental of the key
-        #     note_str = self.height[0] + key.alteredPitches[0].name[1] + self.height[-1]
-        #     self.note = music.note.Note(note_str, duration=self.duration)
-        # else:
-        #     self.note = music.note.Note(self.height, duration=self.duration)
-
         if self.gracenote:
             self.note = self.note.getGrace()
         self.note_ready = True
@@ -68,41 +55,6 @@ class Note:
 
     def __str__(self):
         return f'note {self.height} {self.duration}'
-
-    # @staticmethod
-    # def signs_to_shift(signs: str) -> int:
-    #     """Get string/list of accidental signs (sharps, flats). Count it together and return as int.
-    #
-    #     Args:
-    #         signs (str): String of accidental signs (sharps, flats)
-    #     Returns:
-    #         int: Shift of the note (if > 0: sharp count, else flats count)
-    #     """
-    #     direction = 0
-    #     for sign in signs:
-    #         if sign == '#':
-    #             direction += 1
-    #         elif sign == 'b':
-    #             direction -= 1
-    #     return direction
-    #
-    # @classmethod
-    # def shift_to_signs(cls, direction: int) -> str:
-    #     """Get direction count and convert it to string of accidental signs (sharps, flats). Count it together and return as int.
-    #
-    #     Args:
-    #         direction (int): Direction of the key signature
-    #     Returns:
-    #         str: String of direction signs (sharps, flats)
-    #     """
-    #     signs = []
-    #     if direction == 1:
-    #         signs.append('#')
-    #     elif direction == -1:
-    #         signs.append('b')
-    #     return ''.join(signs)
-    #
-    #     pass
 
 
 class MultiRest:
