@@ -89,10 +89,4 @@ def length_to_label(length: float) -> str:
     Returns:
         str: only length part of one label in semantic format as string
     """
-
-
-    #
-    # if length.dots == 0:
-    #     return SYMBOL_TO_LENGTH[length.quarterLength]
-    # else:
-    #     return SYMBOL_TO_LENGTH[length.quarterLength] + '.' * length.dots
+    ...
