@@ -122,6 +122,7 @@ class Measure:
 
             voice_counts = [symbol_group.get_voice_count() for symbol_group in self.symbol_groups]
             voice_count = max(voice_counts)
+            logging.debug(f'voice_count: {voice_count}')
             # TODO Continue here with heuristic about grouping symbol groups to voices.
             # Store accumulator of durations in every voice and add next note to the shortest ??
         return self.repr
@@ -191,8 +192,12 @@ class SymbolGroup:
         return None
 
     def set_key(self, key):
-        for symbol in self.symbols:
-            symbol.set_key(key)
+        if self.type == SymbolGroupType.TUPLE:
+            for group in self.tuple_data:
+                group.set_key(key)
+        else:
+            for symbol in self.symbols:
+                symbol.set_key(key)
 
     def encode_to_music21_monophonic(self):
         """Encodes the label group to music21 format.
