@@ -302,9 +302,10 @@ class SymbolGroup:
             self.length = self.symbols[0].get_length()
             return SymbolGroupType.SYMBOL
         else:
-            same_length = all(symbol.get_length() == self.symbols[0].get_length()
-                              for symbol in self.symbols)
-            if same_length:
+            same_length_notes = all((symbol.get_length() == self.symbols[0].get_length() and
+                                     symbol.type in [SymbolType.NOTE, SymbolType.GRACENOTE])
+                                    for symbol in self.symbols)
+            if same_length_notes:
                 self.length = self.symbols[0].get_length()
                 return SymbolGroupType.CHORD
             else:
@@ -343,6 +344,7 @@ class SymbolGroup:
             return self.symbols[0].repr
         elif self.type == SymbolGroupType.CHORD:
             notes = [symbol.repr for symbol in self.symbols]
+            logging.debug(f'notes: {notes}')
             return music.chord.Chord(notes)
             # return music.stream.Stream(music.chord.Chord(notes))
         elif self.type == SymbolGroupType.EMPTY:
@@ -358,17 +360,19 @@ class SymbolGroup:
 
         Tuple data consists of a list of symbol groups where symbols have same lengths.
         """
+        logging.debug(f'Creating tuple data for label group: {self.labels}')
         list_of_groups = [[self.symbols[0]]]
         for symbol in self.symbols[1:]:
             symbol_length = symbol.get_length()
             for group in list_of_groups:
-                if symbol_length == group[0].get_length():
+                # if symbol_length == group[0].get_length() and symbol.type in [SymbolType.NOTE, SymbolType.GRACENOTE]:
+                if group[0].type in [SymbolType.NOTE, SymbolType.GRACENOTE] and symbol_length == group[0].get_length():
                     group.append(symbol)
                     break
             else:
                 list_of_groups.append([symbol])
 
-        # logging.debug(list_of_groups)
+        logging.debug(list_of_groups)
 
         self.tuple_data = []
         for group in list_of_groups:
