@@ -12,7 +12,7 @@ import logging
 
 import music21 as music
 from symbol import Symbol, SymbolType
-from symbol_lengths import SYMBOL_TO_LENGTH, AlteredPitches
+from common import SYMBOL_TO_LENGTH, AlteredPitches
 
 
 def semantic_to_music21(labels: str) -> music.stream:
@@ -142,10 +142,6 @@ class Measure:
         """
         voice_count = max([symbol_group.get_voice_count() for symbol_group in self.symbol_groups])
         voices = [Voice() for _ in range(voice_count)]
-        # voices = []
-        # for voice_id in range(voice_count):
-        #     voices.append(Voice())
-        # voices[0].add_symbol_group(SymbolGroup('rest-double_whole'))
         logging.debug('-------------------------------- NEW MEASURE --------------------------------')
         logging.debug(f'voice_count: {voice_count}')
 
@@ -223,9 +219,6 @@ class Measure:
 
         while n > len(shortest_voice_ids):
             logging.debug(f'Found {len(shortest_voice_ids)} shortest voices, desired voices: {n}.')
-            # logging.debug(f'Padding shortest voices ({len(shortest_voice_ids)}) to closest voice.')
-            # logging.debug(
-            #     f'Not enough shortest voices ({len(shortest_voices)}) for {n} symbol groups.')
             second_shortest_voice_ids = Measure.find_shortest_voices(voices, ignore=shortest_voice_ids)
             second_shortest_len = voices[second_shortest_voice_ids[0]].length
             for voice_id in shortest_voice_ids:
@@ -235,27 +228,6 @@ class Measure:
             shortest_voice_ids = Measure.find_shortest_voices(voices)
 
         return shortest_voice_ids
-
-        # else:
-        #     logging.error(
-        #         f'Not enough shortest voices ({len(shortest_voices)}) for {len(groups_to_add)} symbol groups.')
-        #     # Add rest padding to the beginning of measures in ??? voices.
-        #     # TODO while len(shortest_voices) < len(groups_to_add): DO PADDING
-        #
-        #     second_shortest_voices = Measure.find_shortest_voices(voices, ignore=shortest_voices)
-        #     second_shortest_len = voices[second_shortest_voices[0]].length
-        #     for voice_id in shortest_voices:
-        #         ...
-        #         desired_padding_length = second_shortest_len - voices[voice_id].length
-        #         voices[voice_id].add_padding(desired_padding_length)
-        #         # TODO: continue here...
-        #
-        #
-        # voices = [Voice() for _ in range(n)]
-        # shortest_voice_ids = Measure.find_shortest_voices(voices)
-        # for voice_id in shortest_voice_ids:
-        #     voices[voice_id].length = 1_000_000
-        # return voices
 
 
 class SymbolGroupType(Enum):
@@ -380,13 +352,7 @@ class SymbolGroup:
         for group in list_of_groups:
             labels = [symbol.label for symbol in group]
             labels = ' '.join(labels)
-            # logging.debug(f'labels after join: {labels}')
             self.tuple_data.append(SymbolGroup(labels))
-
-        # # Debug print
-        # logging.debug('Printing tuple data after recursive conversion')
-        # for group in self.tuple_data:
-        #     print(group)
 
     def get_voice_count(self):
         """Returns the number of voices in the label group (count of groups in tuple group)

@@ -13,8 +13,8 @@ import re
 
 import music21 as music
 from internal_symbols import Note, MultiRest, Tie
-from symbol_lengths import label_to_length
-from symbol_lengths import AlteredPitches
+from common import label_to_length
+from common import AlteredPitches
 
 
 class SymbolType(Enum):

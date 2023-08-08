@@ -8,7 +8,7 @@ Contact: xvlach22@vutbr.cz
 """
 
 import music21 as music
-from symbol_lengths import AlteredPitches
+from common import AlteredPitches
 
 
 class Note:

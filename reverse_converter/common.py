@@ -11,20 +11,6 @@ import logging
 
 import music21 as music
 
-
-# SYMBOL_TO_LENGTH = {
-#     'hundred_twenty_eighth': 0.03125,  # '128th',
-#     'sixty_fourth': 0.0625,  # '64th',
-#     'thirty_second': 0.125,  # '32th',
-#     'sixteenth': 0.25,  # '16th',
-#     'eighth': 0.5,  # 'eighth',
-#     'quarter': 1,  # 'quarter',
-#     'half': 2,  # 'half',
-#     'whole': 4,  # 'whole',
-#     'double_whole': 2*4,
-#     'quadruple_whole': 4*4
-# }
-
 SYMBOL_TO_LENGTH = {
     'hundred_twenty_eighth': 0.03125,
     'hundred_twenty_eighth.': 0.046875,
@@ -68,13 +54,8 @@ def label_to_length(length: str) -> music.duration.Duration:
     Returns:
         music.duration.Duration: one duration in music21 format
     """
-    # dots = 0
-    # while length.endswith('.'):
-    #     dots += 1
-    #     length = length[:-1]
-
     if length in SYMBOL_TO_LENGTH:
-        return music.duration.Duration(SYMBOL_TO_LENGTH[length])  # , dots=dots)
+        return music.duration.Duration(SYMBOL_TO_LENGTH[length])
     else:
         logging.info(f'Unknown duration label: {length}, returning default duration.')
         return music.duration.Duration(1)
