@@ -12,7 +12,7 @@ import logging
 
 import music21 as music
 from symbol import Symbol, SymbolType
-from symbol_lengths import SYMBOL_TO_LENGTH, length_to_label
+from symbol_lengths import SYMBOL_TO_LENGTH, AlteredPitches
 
 
 def semantic_to_music21(labels: str) -> music.stream:
@@ -106,8 +106,10 @@ class Measure:
             key (music.key.Key): key of the current measure.
         """
         self.keysignature = key
+
+        altered_pitches = AlteredPitches(key)
         for symbol_group in self.symbol_groups:
-            symbol_group.set_key(key)
+            symbol_group.set_key(altered_pitches)
 
     def encode_to_music21(self) -> music.stream.Measure:
         """Encodes the measure to music21 format.
@@ -326,13 +328,13 @@ class SymbolGroup:
 
         return None
 
-    def set_key(self, key):
+    def set_key(self, altered_pitches: AlteredPitches):
         if self.type == SymbolGroupType.TUPLE:
             for group in self.tuple_data:
-                group.set_key(key)
+                group.set_key(altered_pitches)
         else:
             for symbol in self.symbols:
-                symbol.set_key(key)
+                symbol.set_key(altered_pitches)
 
     def encode_to_music21_monophonic(self):
         """Encodes the label group to music21 format.

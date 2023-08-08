@@ -14,6 +14,7 @@ import re
 import music21 as music
 from internal_symbols import Note, MultiRest, Tie
 from symbol_lengths import label_to_length
+from symbol_lengths import AlteredPitches
 
 
 class SymbolType(Enum):
@@ -50,9 +51,9 @@ class Symbol:
         else:
             return 0
 
-    def set_key(self, key):
+    def set_key(self, altered_pitches: AlteredPitches):
         if self.type in [SymbolType.NOTE, SymbolType.GRACENOTE]:
-            self.repr = self.repr.get_real_height(key)
+            self.repr = self.repr.get_real_height(altered_pitches)
 
     @staticmethod
     def label_to_symbol(label: str):  # -> (SymbolType, music.object):

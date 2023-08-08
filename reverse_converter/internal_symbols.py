@@ -8,6 +8,7 @@ Contact: xvlach22@vutbr.cz
 """
 
 import music21 as music
+from symbol_lengths import AlteredPitches
 
 
 class Note:
@@ -27,7 +28,7 @@ class Note:
         self.gracenote = gracenote
         self.note_ready = False
 
-    def get_real_height(self, key: music.key.Key) -> music.note.Note | None:
+    def get_real_height(self, altered_pitches: AlteredPitches) -> music.note.Note | None:
         """Returns the real height of the note.
 
         Args:
@@ -38,15 +39,17 @@ class Note:
         if self.note_ready:
             return self.note
 
-        pitches = [pitch.name[0] for pitch in key.alteredPitches]
+        # pitches = [pitch.name[0] for pitch in key.alteredPitches]
 
-        if not self.height[1:-1] and self.height[0] in pitches:
-            # Note has no accidental on its own and takes accidental of the key
-            note_str = self.height[0] + key.alteredPitches[0].name[1] + self.height[-1]
+        if not self.height[1:-1]:
+            # Note has no accidental on its own and takes accidental of the altered pitches.
+            note_str = self.height[0] + altered_pitches[self.height[0]] + self.height[-1]
             self.note = music.note.Note(note_str, duration=self.duration)
         else:
-            # Key doesn't affect real not height
+            # Note has accidental which directly tells real note height.
             self.note = music.note.Note(self.height, duration=self.duration)
+            # Note sets new altered pitch for future notes.
+            altered_pitches[self.height[0]] = self.height[1:-1]
 
         if self.gracenote:
             self.note = self.note.getGrace()

@@ -80,13 +80,35 @@ def label_to_length(length: str) -> music.duration.Duration:
         return music.duration.Duration(1)
 
 
-def length_to_label(length: float) -> str:
-    """Given length in quarterNotes, return length-label as semantic format.
+class AlteredPitches:
+    def __init__(self, key: music.key.Key):
+        self.key = key
+        self.alteredPitches = {}
+        for pitch in self.key.alteredPitches:
+            self.alteredPitches[pitch.name[0]] = pitch.name[1]
 
-    Args:
-        length (float): length in quarter notes
+    def __repr__(self):
+        return str(self.alteredPitches)
 
-    Returns:
-        str: only length part of one label in semantic format as string
-    """
-    ...
+    def __str__(self):
+        return str(self.alteredPitches)
+
+    def __getitem__(self, pitch_name: str):
+        """Gets name of pitch (e.g. 'C', 'G', ...) and returns its alternation."""
+        if pitch_name not in self.alteredPitches:
+            return ''
+        return self.alteredPitches[pitch_name]
+
+    def __setitem__(self, pitch_name: str, direction: str):
+        """Sets item.
+
+        Args:
+            pitch_name (str): name of pitch (e.g. 'C', 'G',...)
+            direction (str): pitch alternation sign (#, ##, b, bb, 0, N)
+        """
+        if not direction:
+            return
+        elif direction in ['0', 'N']:
+            del self.alteredPitches[pitch_name]
+        else:
+            self.alteredPitches[pitch_name] = direction
