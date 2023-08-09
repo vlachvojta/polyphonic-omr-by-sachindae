@@ -15,29 +15,40 @@ from symbol import Symbol, SymbolType
 from common_rev_conv import SYMBOL_TO_LENGTH, AlteredPitches
 
 
-def semantic_to_music21(labels: str) -> music.stream:
+def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
     """Converts labels to music21 format.
 
-    Args:
-        labels (str): one line of labels in semantic format without any prefixes.
-    """
+        Args:
+            labels (str): one line of labels in semantic format without any prefixes.
+        """
     labels = labels.strip('"')
 
-    measures_labels = re.split(r'\s\+\sbarline\s\+\s', labels)
-    measures_labels = [measure_label.strip() for measure_label in measures_labels if measure_label]
+    # measures_labels = re.split(r'\s\+\sbarline\s\+\s', labels)
+    measures_labels = re.split(r'barline', labels)
 
-    if re.match(r'.*\s\+\sbarline$', measures_labels[-1]):
-        measures_labels[-1] = measures_labels[-1][:-len(' + barline')]
+    stripped_measures_labels = []
+    for measure_label in measures_labels:
+        stripped = measure_label.strip().strip('+').strip()
+        if stripped:
+            stripped_measures_labels.append(stripped)
+    logging.debug(f'stripped_measures_labels: {stripped_measures_labels}')
+    # measures_labels = [measure_label.strip().strip('+').strip() for measure_label in measures_labels if measure_label]
 
-    measures = [Measure(measure_label) for measure_label in measures_labels if measure_label]
+    measures = [Measure(measure_label) for measure_label in stripped_measures_labels if measure_label]
 
-    previous_measure_key = None
+    previous_measure_key = music.key.Key()  # C Major as a default key (without accidentals)
     for measure in measures:
         previous_measure_key = measure.get_key(previous_measure_key)
 
     logging.debug('Printing measures:')
     for measure in measures:
         print(measure)
+
+    return measures
+
+
+def semantic_to_music21(labels: str) -> music.stream:
+    measures = parse_semantic_to_measures(labels)
 
     logging.debug('-------------------------------- -------------- --------------------------------')
     logging.debug('-------------------------------- START ENCODING --------------------------------')
@@ -61,8 +72,16 @@ class Measure:
         """Takes labels corresponding to a single measure."""
         self.labels = labels
 
-        label_groups = re.split(r'\s\+\s', self.labels)
-        self.symbol_groups = [SymbolGroup(label_group) for label_group in label_groups if label_group]
+        label_groups = re.split(r'\+', self.labels)
+        stripped_label_groups = []
+        for measure_label in label_groups:
+            stripped = measure_label.strip().strip('+').strip()
+            if stripped:
+                stripped_label_groups.append(stripped)
+        logging.debug(f'stripped_label_groups: {stripped_label_groups}')
+        # label_groups = [label_group.strip() for label_group in label_groups if label_group]
+
+        self.symbol_groups = [SymbolGroup(label_group) for label_group in stripped_label_groups]
 
     def __str__(self):
         label_groups_str = '\n'.join([str(group) for group in self.symbol_groups])
@@ -149,9 +168,13 @@ class Measure:
         logging.debug(f'voice_count: {voice_count}')
 
         zero_length_symbol_groups = Measure.find_zero_length_symbol_groups(self.symbol_groups)
+        remaining_symbol_groups = self.symbol_groups[len(zero_length_symbol_groups):]
+
+        mono_start_symbol_groups = Measure.get_mono_start_symbol_groups(remaining_symbol_groups)
+        remaining_symbol_groups = remaining_symbol_groups[len(mono_start_symbol_groups):]
 
         # Groups to voices
-        for symbol_group in self.symbol_groups[len(zero_length_symbol_groups):]:
+        for symbol_group in remaining_symbol_groups:
             logging.debug('------------ NEW symbol_group ------------------------')
             groups_to_add = symbol_group.get_groups_to_add()
             shortest_voice_ids = Measure.pad_voices_to_n_shortest(voices, len(groups_to_add))
@@ -231,6 +254,11 @@ class Measure:
             shortest_voice_ids = Measure.find_shortest_voices(voices)
 
         return shortest_voice_ids
+
+    @staticmethod
+    def get_mono_start_symbol_groups(symbol_groups: list) -> list:
+        """Returns a list of monophonic symbol groups AT THE BEGGING OF THE MEASURE."""
+        return []
 
 
 class SymbolGroupType(Enum):
@@ -337,9 +365,12 @@ class SymbolGroup:
 
         Tuple data consists of a list of symbol groups where symbols have same lengths.
         """
-        logging.debug(f'Creating tuple data for label group: {self.labels}')
+        # logging.debug(f'Creating tuple data for label group: {self.labels}')
         list_of_groups = [[self.symbols[0]]]
         for symbol in self.symbols[1:]:
+            if symbol.type == SymbolType.REST:
+                list_of_groups.append([symbol])
+                continue
             symbol_length = symbol.get_length()
             for group in list_of_groups:
                 # if symbol_length == group[0].get_length() and symbol.type in [SymbolType.NOTE, SymbolType.GRACENOTE]:
@@ -349,7 +380,7 @@ class SymbolGroup:
             else:
                 list_of_groups.append([symbol])
 
-        logging.debug(list_of_groups)
+        # logging.debug(list_of_groups)
 
         self.tuple_data = []
         for group in list_of_groups:
