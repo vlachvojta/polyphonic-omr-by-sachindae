@@ -43,9 +43,12 @@ def semantic_to_music21(labels: str) -> music.stream:
     logging.debug('-------------------------------- START ENCODING --------------------------------')
     logging.debug('-------------------------------- -------------- --------------------------------')
 
-    measures = [measure.encode_to_music21() for measure in measures]
-    # TODO: add measure number or something...
-    stream = music.stream.Stream(music.stream.Part(measures))
+    measures_encoded = []
+    for measure_id, measure in enumerate(measures):
+        measures_encoded.append(measure.encode_to_music21())
+        measures_encoded[-1].number = measure_id + 1
+
+    stream = music.stream.Stream(music.stream.Part(measures_encoded))
     return stream
 
 
