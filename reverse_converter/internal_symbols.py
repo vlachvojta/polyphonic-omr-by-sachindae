@@ -7,8 +7,10 @@ Author: Vojtěch Vlach
 Contact: xvlach22@vutbr.cz
 """
 
+import logging
+
 import music21 as music
-from common import AlteredPitches
+from common_rev_conv import AlteredPitches
 
 
 class Note:
@@ -47,9 +49,10 @@ class Note:
             self.note = music.note.Note(note_str, duration=self.duration)
         else:
             # Note has accidental which directly tells real note height.
-            self.note = music.note.Note(self.height, duration=self.duration)
+            note_str = self.height[0] + self.height[1:-1].replace('b', '-') + self.height[-1]
+            self.note = music.note.Note(note_str, duration=self.duration)
             # Note sets new altered pitch for future notes.
-            altered_pitches[self.height[0]] = self.height[1:-1]
+            altered_pitches[self.height[0]] = note_str[1:-1]
 
         if self.gracenote:
             self.note = self.note.getGrace()

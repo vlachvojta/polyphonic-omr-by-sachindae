@@ -13,8 +13,8 @@ import re
 
 import music21 as music
 from internal_symbols import Note, MultiRest, Tie
-from common import label_to_length
-from common import AlteredPitches
+from common_rev_conv import label_to_length
+from common_rev_conv import AlteredPitches
 
 
 class SymbolType(Enum):
@@ -88,6 +88,7 @@ class Symbol:
             return SymbolType.TIME_SIGNATURE, Symbol.timesignature_to_symbol(label)
 
         logging.info(f'Unknown label: {label}, returning None.')
+        exit(0)
         return SymbolType.UNKNOWN, None
 
     @staticmethod

@@ -12,7 +12,7 @@ import logging
 
 import music21 as music
 from symbol import Symbol, SymbolType
-from common import SYMBOL_TO_LENGTH, AlteredPitches
+from common_rev_conv import SYMBOL_TO_LENGTH, AlteredPitches
 
 
 def semantic_to_music21(labels: str) -> music.stream:

@@ -90,6 +90,9 @@ class AlteredPitches:
         if not direction:
             return
         elif direction in ['0', 'N']:
-            del self.alteredPitches[pitch_name]
+            if pitch_name in self.alteredPitches:
+                del self.alteredPitches[pitch_name]
+            # del self.alteredPitches[pitch_name]
+            return
         else:
             self.alteredPitches[pitch_name] = direction
