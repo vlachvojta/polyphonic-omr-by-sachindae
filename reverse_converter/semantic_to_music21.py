@@ -31,18 +31,12 @@ def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
         stripped = measure_label.strip().strip('+').strip()
         if stripped:
             stripped_measures_labels.append(stripped)
-    logging.debug(f'stripped_measures_labels: {stripped_measures_labels}')
-    # measures_labels = [measure_label.strip().strip('+').strip() for measure_label in measures_labels if measure_label]
 
     measures = [Measure(measure_label) for measure_label in stripped_measures_labels if measure_label]
 
     previous_measure_key = music.key.Key()  # C Major as a default key (without accidentals)
     for measure in measures:
         previous_measure_key = measure.get_key(previous_measure_key)
-
-    logging.debug('Printing measures:')
-    for measure in measures:
-        print(measure)
 
     return measures
 
@@ -82,10 +76,9 @@ class Measure:
             stripped = measure_label.strip().strip('+').strip()
             if stripped:
                 stripped_label_groups.append(stripped)
-        logging.debug(f'stripped_label_groups: {stripped_label_groups}')
-        # label_groups = [label_group.strip() for label_group in label_groups if label_group]
 
         self.symbol_groups = [SymbolGroup(label_group) for label_group in stripped_label_groups]
+        self._is_polyphonic = self.is_polyphonic
 
     def __str__(self):
         label_groups_str = '\n'.join([str(group) for group in self.symbol_groups])
@@ -157,7 +150,6 @@ class Measure:
         logging.debug(str(self))
 
         logging.debug('Current measure ENCODED:')
-        self.repr.show('text')
         return self.repr
 
     def encode_to_music21_polyphonic(self) -> music.stream.Measure:
@@ -191,7 +183,6 @@ class Measure:
 
             for voice_id, voice in enumerate(voices):
                 logging.debug(f'voice ({voice_id}) len: {voice.length}')
-                voice.encode_to_music21_monophonic().show('text')
 
         zero_length_encoded = [group.encode_to_music21_monophonic() for group in zero_length_symbol_groups]
         voices_repr = [voice.encode_to_music21_monophonic() for voice in voices]
