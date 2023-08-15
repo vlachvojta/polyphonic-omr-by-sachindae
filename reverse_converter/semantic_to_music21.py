@@ -59,7 +59,11 @@ def semantic_to_music21(labels: str) -> music.stream:
         measures_encoded.append(measure.encode_to_music21())
         measures_encoded[-1].number = measure_id + 1
 
-    stream = music.stream.Stream(music.stream.Part(measures_encoded))
+    # stream = music.stream.Score(music.stream.Part([music.instrument.Piano()] + measures_encoded))
+    metadata = music.metadata.Metadata()
+    metadata.title = metadata.composer = ''
+    stream = music.stream.Score([metadata, music.stream.Part([music.instrument.Piano()] + measures_encoded)])
+
     return stream
 
 
