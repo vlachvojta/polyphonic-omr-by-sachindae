@@ -12,7 +12,7 @@ import logging
 
 import music21 as music
 from symbol import Symbol, SymbolType
-from common_rev_conv import SYMBOL_TO_LENGTH, AlteredPitches
+from common_rev_conv import LENGTH_TO_SYMBOL, AlteredPitches
 
 
 def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
@@ -167,6 +167,7 @@ class Measure:
         remaining_symbol_groups = self.symbol_groups[len(zero_length_symbol_groups):]
 
         mono_start_symbol_groups = Measure.get_mono_start_symbol_groups(remaining_symbol_groups)
+        voices = Measure.create_mono_start(voices, mono_start_symbol_groups)
         remaining_symbol_groups = remaining_symbol_groups[len(mono_start_symbol_groups):]
 
         # Groups to voices
@@ -252,8 +253,38 @@ class Measure:
 
     @staticmethod
     def get_mono_start_symbol_groups(symbol_groups: list) -> list:
-        """Returns a list of monophonic symbol groups AT THE BEGGING OF THE MEASURE."""
-        return []
+        """Get a list of monophonic symbol groups AT THE BEGINNING OF THE MEASURE.
+
+        Returns:
+            list: list of monophonic symbol groups AT THE BEGINNING OF THE MEASURE
+        """
+        mono_start_symbol_groups = []
+        for symbol_group in symbol_groups:
+            if symbol_group.type == SymbolGroupType.TUPLE:
+                break
+            mono_start_symbol_groups.append(symbol_group)
+        return mono_start_symbol_groups
+
+    @staticmethod
+    def create_mono_start(voices: list, mono_start_symbol_groups: list) -> list:
+        """Create monophonic start of measure in the first voice and add padding to the others.
+
+        Args:
+            voices (list[Voices]): list of voices
+            mono_start_symbol_groups: list of monophonic symbol groups AT THE BEGINNING OF MEASURE.
+
+        Returns:
+            list[Voice]: list of voices
+        """
+        padding_length = 0
+        for symbol_group in mono_start_symbol_groups:
+            voices[0].add_symbol_group(symbol_group)
+            padding_length += symbol_group.length
+
+        for voice in voices[1:]:
+            voice.add_padding(padding_length)
+
+        return voices
 
 
 class SymbolGroupType(Enum):
@@ -462,13 +493,12 @@ class Voice:
         Args:
             padding_length (float): desired length of the padding in quarter notes.
         """
-        length_to_symbol = {v: k for k, v in SYMBOL_TO_LENGTH.items()}  # reverse dict
-        lengths = list(length_to_symbol.values())
-        min_length = min(length_to_symbol.keys())
+        lengths = list(LENGTH_TO_SYMBOL.values())
+        min_length = min(LENGTH_TO_SYMBOL.keys())
 
         while padding_length > 0:
-            if padding_length in length_to_symbol:
-                length_label = length_to_symbol[padding_length]
+            if padding_length in LENGTH_TO_SYMBOL:
+                length_label = LENGTH_TO_SYMBOL[padding_length]
                 logging.debug(f'Completing padding with padding length {padding_length} to the voice.')
                 self.add_symbol_group(SymbolGroup(f'rest-{length_label}'))
                 padding_length -= padding_length
@@ -480,6 +510,6 @@ class Voice:
                 step = lengths[lengths < padding_length].max()
                 logging.debug(f'Adding padding STEP {step} to the voice.')
 
-                length_label = length_to_symbol[step]
+                length_label = LENGTH_TO_SYMBOL[step]
                 self.add_symbol_group(SymbolGroup(f'rest-{length_label}'))
                 padding_length -= step

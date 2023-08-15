@@ -47,6 +47,8 @@ SYMBOL_TO_LENGTH = {
     'quadruple_whole..': 28.0
 }
 
+LENGTH_TO_SYMBOL = {v: k for k, v in SYMBOL_TO_LENGTH.items()}  # reverse dictionary
+
 
 def label_to_length(length: str) -> music.duration.Duration:
     """Return length of label as music21 duration.
