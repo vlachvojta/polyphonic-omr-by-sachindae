@@ -7,7 +7,7 @@ Contact: xvlach22@vutbr.cz
 
 TODO: write docu after development
 
-Mode options:  ??? TODO: decide which mode to implement (so far am going with 1to0)
+Mode options:  ??? TODO: decide which mode to implement (so far am going with 1to1)
     - 1to1 (1 label-sequence => 1 XML file)
     - Nto1 (group of label-sequences with same ID prefix => 1 XML file)
 """
@@ -85,7 +85,7 @@ class ReverseConverter:
             lines = ReverseConverter.read_file_lines(input_file_name)
 
             for i, line in enumerate(lines):
-                match = re.fullmatch(r'([a-zA-Z0-9_]+)[a-zA-Z0-9_\.]+\s+[0-9]+\s+\"([\S\s]+)\"', line)
+                match = re.fullmatch(r'([a-zA-Z0-9_\-]+)[a-zA-Z0-9_\.]+\s+[0-9]+\s+\"([\S\s]+)\"', line)
 
                 if not match:
                     logging.debug(f'NOT MATCHING PATTERN. Skipping line {i} in file {input_file_name}: '
