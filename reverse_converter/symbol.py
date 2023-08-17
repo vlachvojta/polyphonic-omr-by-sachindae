@@ -88,7 +88,6 @@ class Symbol:
             return SymbolType.TIME_SIGNATURE, Symbol.timesignature_to_symbol(label)
 
         logging.info(f'Unknown label: {label}, returning None.')
-        exit(0)
         return SymbolType.UNKNOWN, None
 
     @staticmethod
