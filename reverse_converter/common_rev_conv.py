@@ -8,6 +8,7 @@ Contact: xvlach22@vutbr.cz
 """
 
 import logging
+import json
 
 import music21 as music
 
@@ -101,3 +102,22 @@ class AlteredPitches:
             return
         else:
             self.alteredPitches[pitch_name] = direction
+
+
+def music21_to_musicxml(music_object):
+    out_bytes = music.musicxml.m21ToXml.GeneralObjectExporter(music_object).parse()
+    out_str = out_bytes.decode('utf-8')
+    return out_str.strip()
+
+
+def write_to_file(output_file_name, xml):
+    with open(output_file_name, 'w', encoding='utf-8') as f:
+        f.write(xml)
+
+    logging.info(f'File {output_file_name} successfully written.')
+
+
+def read_json(filename) -> dict:
+    with open(filename) as f:
+        data = json.load(f)
+    return data
