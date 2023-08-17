@@ -41,9 +41,7 @@ def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
     return measures
 
 
-def semantic_to_music21(labels: str) -> music.stream:
-    measures = parse_semantic_to_measures(labels)
-
+def encode_measures(measures: list, measure_id_start_from: int = 1) -> list:  # list[Measure]
     logging.debug('-------------------------------- -------------- --------------------------------')
     logging.debug('-------------------------------- START ENCODING --------------------------------')
     logging.debug('-------------------------------- -------------- --------------------------------')
@@ -51,7 +49,14 @@ def semantic_to_music21(labels: str) -> music.stream:
     measures_encoded = []
     for measure_id, measure in enumerate(measures):
         measures_encoded.append(measure.encode_to_music21())
-        measures_encoded[-1].number = measure_id + 1
+        measures_encoded[-1].number = measure_id_start_from + measure_id
+
+    return measures_encoded
+
+
+def semantic_line_to_music21_score(labels: str) -> music.stream.Score:
+    measures = parse_semantic_to_measures(labels)
+    measures_encoded = encode_measures(measures)
 
     # stream = music.stream.Score(music.stream.Part([music.instrument.Piano()] + measures_encoded))
     metadata = music.metadata.Metadata()

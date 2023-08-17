@@ -20,7 +20,8 @@ import time
 import logging
 
 import music21 as music
-from semantic_to_music21 import semantic_to_music21
+from semantic_to_music21 import semantic_line_to_music21_score
+import common_rev_conv
 
 
 def parseargs():
@@ -96,7 +97,7 @@ class ReverseConverter:
                 labels = match.group(2)
                 output_file_name = os.path.join(self.output_folder, f'{stave_id}.musicxml')
 
-                parsed_labels = semantic_to_music21(labels)
+                parsed_labels = semantic_line_to_music21_score(labels)
                 if not isinstance(parsed_labels, music.stream.Stream):
                     logging.error(f'Labels could not be parsed. Skipping line {i} in file {input_file_name}: '
                                   f'({line[:min(50, len(line))]}...)')
@@ -105,8 +106,8 @@ class ReverseConverter:
                 logging.info(f'Parsing successfully completed.')
                 # parsed_labels.show()  # Show parsed labels in some visual program (MuseScore by default)
 
-                xml = ReverseConverter.music21_to_musicxml(parsed_labels)
-                ReverseConverter.write_to_file(output_file_name, xml)
+                xml = common_rev_conv.music21_to_musicxml(parsed_labels)
+                common_rev_conv.write_to_file(output_file_name, xml)
 
     @staticmethod
     def prepare_output_folder(output_folder: str):
@@ -135,19 +136,6 @@ class ReverseConverter:
             logging.warning(f'File {input_file} is empty!')
 
         return [line for line in lines if line]
-
-    @staticmethod
-    def music21_to_musicxml(music_object):
-        out_bytes = music.musicxml.m21ToXml.GeneralObjectExporter(music_object).parse()
-        out_str = out_bytes.decode('utf-8')
-        return out_str.strip()
-
-    @staticmethod
-    def write_to_file(output_file_name, xml):
-        with open(output_file_name, 'w', encoding='utf-8') as f:
-            f.write(xml)
-
-        logging.info(f'File {output_file_name} successfully written.')
 
 
 if __name__ == '__main__':
