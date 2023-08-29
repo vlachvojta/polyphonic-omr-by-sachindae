@@ -38,8 +38,9 @@ def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
     for measure in measures:
         previous_measure_key = measure.get_key(previous_measure_key)
 
+    measures[0].new_system = True
+
     previous_measure_clef = measures[0].symbol_groups[0].get_clef()  # Get first measure clef to compare to
-    # previous_measure_clef = music.clef.TrebleClef()  # Treble clef as a default clef (most commonly used)
     for measure in measures:
         previous_measure_clef = measure.delete_redundant_clef(previous_measure_clef)
 
@@ -75,7 +76,7 @@ class Measure:
     _is_polyphonic = None
     keysignature = None
     repr = None
-    # clef = None
+    new_system = False
 
     def __init__(self, labels: str):
         """Takes labels corresponding to a single measure."""
@@ -176,6 +177,9 @@ class Measure:
                 self.repr.append(symbol_group.encode_to_music21_monophonic())
         else:
             self.repr = self.encode_to_music21_polyphonic()
+
+        if self.new_system:
+            self.repr.insert(0, music.layout.SystemLayout(isNew=True))
 
         logging.debug('Current measure:')
         logging.debug(str(self))
