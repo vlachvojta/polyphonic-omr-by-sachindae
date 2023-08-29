@@ -18,9 +18,9 @@ from common_rev_conv import LENGTH_TO_SYMBOL, AlteredPitches
 def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
     """Converts labels to music21 format.
 
-        Args:
-            labels (str): one line of labels in semantic format without any prefixes.
-        """
+    Args:
+        labels (str): one line of labels in semantic format without any prefixes.
+    """
     labels = labels.strip('"')
 
     # measures_labels = re.split(r'\s\+\sbarline\s\+\s', labels)
@@ -37,6 +37,11 @@ def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
     previous_measure_key = music.key.Key()  # C Major as a default key (without accidentals)
     for measure in measures:
         previous_measure_key = measure.get_key(previous_measure_key)
+
+    previous_measure_clef = measures[0].symbol_groups[0].get_clef()  # Get first measure clef to compare to
+    # previous_measure_clef = music.clef.TrebleClef()  # Treble clef as a default clef (most commonly used)
+    for measure in measures:
+        previous_measure_clef = measure.delete_redundant_clef(previous_measure_clef)
 
     return measures
 
@@ -70,6 +75,7 @@ class Measure:
     _is_polyphonic = None
     keysignature = None
     repr = None
+    # clef = None
 
     def __init__(self, labels: str):
         """Takes labels corresponding to a single measure."""
@@ -122,6 +128,26 @@ class Measure:
         else:
             self.set_key(previous_measure_key)
         return self.keysignature
+
+    def delete_redundant_clef(self, previous_measure_clef: music.clef.Clef) -> music.clef.Clef:
+        """Check whether the current measure changes clef. If not, delete clefs in the beginning of measure."""
+        # Get current clef or None
+        clef = self.symbol_groups[0].get_clef()
+        if clef is None:
+            return previous_measure_clef
+
+        print('------------------')
+        print(f'previous_measure_clef: {previous_measure_clef}')
+        print(f'current clef: {clef}')
+
+        if clef == previous_measure_clef:
+            print('EQUALS')
+            self.symbol_groups.pop(0)
+            return previous_measure_clef
+            # Delete clef from symbol groups
+        else:
+            print('NOT EQUALS')
+            return clef
 
     def set_key(self, key: music.key.Key):
         """Sets the key of the measure. Send key to all symbols groups to represent notes in real height.
@@ -444,6 +470,11 @@ class SymbolGroup:
             logging.debug(f'{group}')
 
         return groups_to_add
+
+    def get_clef(self) -> music.clef.Clef | None:
+        if self.type == SymbolGroupType.SYMBOL and self.symbols[0].type == SymbolType.CLEF:
+            return self.symbols[0].repr
+        return None
 
 
 class Voice:
