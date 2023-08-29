@@ -16,7 +16,7 @@ from common_rev_conv import LENGTH_TO_SYMBOL, AlteredPitches
 
 
 def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
-    """Converts labels to music21 format.
+    """Convert line of semantic labels to list of measures.
 
     Args:
         labels (str): one line of labels in semantic format without any prefixes.
@@ -40,14 +40,15 @@ def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
 
     measures[0].new_system = True
 
-    previous_measure_clef = measures[0].symbol_groups[0].get_clef()  # Get first measure clef to compare to
-    for measure in measures:
-        previous_measure_clef = measure.delete_redundant_clef(previous_measure_clef)
+    previous_measure_last_clef = measures[0].get_last_clef()
+    for measure in measures[1:]:
+        previous_measure_last_clef = measure.get_last_clef(previous_measure_last_clef)
 
     return measures
 
 
 def encode_measures(measures: list, measure_id_start_from: int = 1) -> list:  # list[Measure]
+    """Get list of measures and encode them to music21 encoded measures."""
     logging.debug('-------------------------------- -------------- --------------------------------')
     logging.debug('-------------------------------- START ENCODING --------------------------------')
     logging.debug('-------------------------------- -------------- --------------------------------')
@@ -61,6 +62,7 @@ def encode_measures(measures: list, measure_id_start_from: int = 1) -> list:  # 
 
 
 def semantic_line_to_music21_score(labels: str) -> music.stream.Score:
+    """Get semantic line of labels, Return stream encoded in music21 score format."""
     measures = parse_semantic_to_measures(labels)
     measures_encoded = encode_measures(measures)
 
@@ -77,6 +79,8 @@ class Measure:
     keysignature = None
     repr = None
     new_system = False
+    start_clef = None
+    last_clef = None
 
     def __init__(self, labels: str):
         """Takes labels corresponding to a single measure."""
@@ -130,25 +134,28 @@ class Measure:
             self.set_key(previous_measure_key)
         return self.keysignature
 
-    def delete_redundant_clef(self, previous_measure_clef: music.clef.Clef) -> music.clef.Clef:
-        """Check whether the current measure changes clef. If not, delete clefs in the beginning of measure."""
-        # Get current clef or None
-        clef = self.symbol_groups[0].get_clef()
-        if clef is None:
-            return previous_measure_clef
-
-        print('------------------')
-        print(f'previous_measure_clef: {previous_measure_clef}')
-        print(f'current clef: {clef}')
-
-        if clef == previous_measure_clef:
-            print('EQUALS')
-            self.symbol_groups.pop(0)
-            return previous_measure_clef
-            # Delete clef from symbol groups
+    def get_start_clef(self) -> music.clef.Clef | None:
+        if self.start_clef is not None:
+            return self.start_clef
         else:
-            print('NOT EQUALS')
-            return clef
+            return self.symbol_groups[0].get_clef()
+
+    def get_last_clef(self, previous_measure_last_clef: music.clef.Clef = music.clef.TrebleClef
+                      ) -> music.clef.Clef | None:
+        if self.last_clef is not None:
+            return self.last_clef
+
+        self.last_clef = previous_measure_last_clef
+
+        for group in self.symbol_groups:
+            new_clef = group.get_clef()
+            if new_clef is not None:
+                self.last_clef = new_clef
+
+        return self.last_clef
+
+    def delete_clef_symbol(self, position: int = 0) -> None:
+        self.symbol_groups.pop(position)
 
     def set_key(self, key: music.key.Key):
         """Sets the key of the measure. Send key to all symbols groups to represent notes in real height.

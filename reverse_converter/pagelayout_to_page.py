@@ -126,7 +126,7 @@ class Part:
     def __init__(self, translator):
         self.repr_music21 = music.stream.Part([music.instrument.Piano()])
         self.labels: list[str] = []
-        self.measures: list[Measure] = []
+        self.measures: list[Measure] = []  # List of measures in internal representation, NOT music21
         self.translator = translator
 
     def add_textline(self, line: TextLine) -> None:
@@ -134,10 +134,15 @@ class Part:
         self.labels.append(labels)
 
         new_measures = parse_semantic_to_measures(labels)
-        new_measures = encode_measures(new_measures, len(self.measures) + 1)
+
+        # Delete first clef symbol of first measure if same as previous
+        if len(self.measures) and new_measures[0].get_start_clef() == self.measures[-1].last_clef:
+            new_measures[0].delete_clef_symbol()
+
+        new_measures_encoded = encode_measures(new_measures, len(self.measures) + 1)
 
         self.measures += new_measures
-        self.repr_music21.append(new_measures)
+        self.repr_music21.append(new_measures_encoded)
         # print('--------------------------------')
         # print(labels)
         # self.repr_music21.show('text')
@@ -150,6 +155,7 @@ class Part:
 
 
 class Translator:
+    """Translator class for translating shorter SSemantic encoding to Semantic encoding using translator dictionary."""
     def __init__(self, file_name: str):
         self.translator = common_rev_conv.read_json(file_name)
         self.translator_reversed = {v: k for k, v in self.translator.items()}
