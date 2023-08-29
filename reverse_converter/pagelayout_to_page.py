@@ -39,6 +39,9 @@ def parseargs():
         "-o", "--output-folder", default='output_page',
         help="Set output file with extension. Output format is JSON")
     parser.add_argument(
+        "-m", "--export-midi", action='store_true',
+        help="Enable exporting midi file to output_folder.")
+    parser.add_argument(
         '-v', "--verbose", action='store_true', default=False,
         help="Activate verbose logging.")
 
@@ -54,6 +57,7 @@ def main():
         input_xml_path=args.input_xml_path,
         translator_path=args.translator_path,
         output_folder=args.output_folder,
+        export_midi=args.export_midi,
         verbose=args.verbose)()
 
     end = time.time()
@@ -64,7 +68,8 @@ class PageLayoutToPage:
     """Take pageLayout XML exported from pero-ocr with transcriptions and re-construct page of musical notation."""
 
     def __init__(self, input_xml_path: str, translator_path: str,
-                 output_folder: str, verbose: bool = False):
+                 output_folder: str, export_midi: bool = False,
+                 verbose: bool = False):
         self.translator_path = translator_path
         if verbose:
             logging.basicConfig(level=logging.DEBUG, format='[%(levelname)-s]  \t- %(message)s')
@@ -78,13 +83,14 @@ class PageLayoutToPage:
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
         self.output_folder = output_folder
+        self.export_midi = export_midi
 
     def __call__(self) -> None:
         page = PageLayout(file=self.input_xml_path)
         print(f'Page {self.input_xml_path} loaded successfully.')
         translator = Translator(file_name=self.translator_path)
 
-        parts = PageLayoutToPage.regions_to_parts(page.regions, translator)
+        parts = PageLayoutToPage.regions_to_parts(page.regions, translator, self.export_midi)
         music_parts = []
         for part in parts:
             music_parts.append(part.encode_to_music21())
@@ -99,16 +105,33 @@ class PageLayoutToPage:
         xml = common_rev_conv.music21_to_musicxml(score)
         common_rev_conv.write_to_file(output_file, xml)
 
+        if self.export_midi:
+            self.export_to_midi(score, parts)
+
     def get_output_file(self, extension: str = 'musicxml') -> str:
+        base = self.get_output_file_base()
+        return f'{base}.{extension}'
+
+    def get_output_file_base(self) -> str:
         input_file = os.path.basename(self.input_xml_path)
         name, *_ = re.split(r'\.', input_file)
-        return os.path.join(self.output_folder, f'{name}.{extension}')
+        return os.path.join(self.output_folder, f'{name}')
+
+    def export_to_midi(self, score, parts):
+        # Export whole score to midi
+        output_file = self.get_output_file('mid')
+        score.write("midi", output_file)
+
+        for part in parts:
+            base = self.get_output_file_base()
+            part.export_to_midi(base)
 
     @staticmethod
-    def regions_to_parts(regions: list[RegionLayout], translator) -> list:  # -> list[Part]:
+    def regions_to_parts(regions: list[RegionLayout], translator, export_midi: bool = False
+                         ) -> list:  # -> list[Part]:
         """Takes a list of regions and splits them to parts."""
         max_parts = max([len(region.lines) for region in regions])
-        print(f'Max parts: {max_parts}')
+        # print(f'Max parts: {max_parts}')
 
         # TODO add empty measure padding to parts without textlines
 
@@ -124,10 +147,12 @@ class Part:
     """Represent musical part (part of notation for one instrument/section)"""
 
     def __init__(self, translator):
+        self.translator = translator
+
         self.repr_music21 = music.stream.Part([music.instrument.Piano()])
         self.labels: list[str] = []
+        self.textlines: list[TextLineWrapper] = []
         self.measures: list[Measure] = []  # List of measures in internal representation, NOT music21
-        self.translator = translator
 
     def add_textline(self, line: TextLine) -> None:
         labels = self.translator.convert_line(line.transcription, False)
@@ -140,9 +165,12 @@ class Part:
             new_measures[0].delete_clef_symbol()
 
         new_measures_encoded = encode_measures(new_measures, len(self.measures) + 1)
+        new_measures_encoded_without_measure_ids = encode_measures(new_measures)
 
         self.measures += new_measures
         self.repr_music21.append(new_measures_encoded)
+
+        self.textlines.append(TextLineWrapper(line, new_measures_encoded_without_measure_ids))
         # print('--------------------------------')
         # print(labels)
         # self.repr_music21.show('text')
@@ -152,6 +180,25 @@ class Part:
             logging.info('Part empty')
 
         return self.repr_music21
+
+    def export_to_midi(self, file_base: str):
+        for text_line in self.textlines:
+            text_line.export_midi(file_base)
+
+
+class TextLineWrapper:
+    """Class to wrap one TextLine for easier export etc."""
+    def __init__(self, text_line: TextLine, measures: list[music.stream.Measure]):
+        self.text_line = text_line
+        print(f'len of measures: {len(measures)}')
+        self.repr_music21 = music.stream.Part([music.instrument.Piano()] + measures)
+
+    def export_midi(self, file_base: str = 'out'):
+        filename = f'{file_base}_{self.text_line.id}.mid'
+
+        xml = common_rev_conv.music21_to_musicxml(self.repr_music21)
+        parsed_xml = music.converter.parse(xml)
+        parsed_xml.write('mid', filename)
 
 
 class Translator:
