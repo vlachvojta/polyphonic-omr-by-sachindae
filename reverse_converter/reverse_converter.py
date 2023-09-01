@@ -2,14 +2,15 @@
 """Script for converting sequential representation of music labels (produced by the model) to standard musicxml format
 usable by external tools.
 
+Gets list of input files where every file contains lines of semantic labels with corresponding IDs
+in one of the following shapes:
+    00005.jpg 000000 ">2 nb2..."
+    00006.jpg ">2 nb2..."
+
+Creates musicxml for every line and names it according to the ID at the beginning of each line.
+
 Author: Vojtěch Vlach
 Contact: xvlach22@vutbr.cz
-
-TODO: write docu after development
-
-Mode options:  ??? TODO: decide which mode to implement (so far am going with 1to1)
-    - 1to1 (1 label-sequence => 1 XML file)
-    - Nto1 (group of label-sequences with same ID prefix => 1 XML file)
 """
 
 import argparse
@@ -37,10 +38,6 @@ def parseargs():
     parser.add_argument(
         '-o', '--output-folder', type=str, default='output_musicxml',
         help='Path to the output directory to write MusicXMLs.')
-    # parser.add_argument(
-    #     '-m', '--mode', type=str, default='new-system', choices=['orig', 'new-system'],
-    #     help=('Set mode of separating labels to systems. Original takes note widths, '
-    #           'new-system looks for new-system and new-page tags.'))
     parser.add_argument(
         '-v', "--verbose", action='store_true', default=False,
         help="Activate verbose logging.")
@@ -86,7 +83,7 @@ class ReverseConverter:
             lines = ReverseConverter.read_file_lines(input_file_name)
 
             for i, line in enumerate(lines):
-                match = re.fullmatch(r'([a-zA-Z0-9_\-]+)[a-zA-Z0-9_\.]+\s+[0-9]+\s+\"([\S\s]+)\"', line)
+                match = re.fullmatch(r'([a-zA-Z0-9_\-]+)[a-zA-Z0-9_\.]+\s+([0-9]+\s+)?\"([\S\s]+)\"', line)
 
                 if not match:
                     logging.debug(f'NOT MATCHING PATTERN. Skipping line {i} in file {input_file_name}: '
@@ -94,7 +91,7 @@ class ReverseConverter:
                     continue
 
                 stave_id = match.group(1)
-                labels = match.group(2)
+                labels = match.group(3)
                 output_file_name = os.path.join(self.output_folder, f'{stave_id}.musicxml')
 
                 parsed_labels = semantic_line_to_music21_score(labels)
