@@ -12,8 +12,7 @@ from enum import Enum
 import logging
 
 import music21 as music
-from symbol import Symbol, SymbolType, AlteredPitches
-from symbol import LENGTH_TO_SYMBOL
+from music_symbols import Symbol, SymbolType, AlteredPitches, LENGTH_TO_SYMBOL
 
 
 class Measure:
