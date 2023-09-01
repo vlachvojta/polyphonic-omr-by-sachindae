@@ -24,6 +24,8 @@ import music21 as music
 from semantic_to_music21 import semantic_line_to_music21_score
 import common_rev_conv
 
+from pagelayout_to_page import Translator
+
 
 def parseargs():
     """Parse arguments."""
@@ -49,7 +51,7 @@ def main():
     args = parseargs()
 
     start = time.time()
-    ReverseConverter(
+    ExportLines(
         input_files=args.input_files,
         output_folder=args.output_folder,
         verbose=args.verbose)()
@@ -58,8 +60,10 @@ def main():
     print(f'Total time: {end - start}')
 
 
-class ReverseConverter:
-    def __init__(self, input_files: list[str] = None, output_folder: str = 'output_musicxml', verbose: bool = False):
+class ExportLines:
+    def __init__(self, translator: Translator, input_files: list[str] = None,
+                 output_folder: str = 'output_musicxml', verbose: bool = False):
+        self.translator = translator
         self.output_folder = output_folder
 
         if verbose:
@@ -69,8 +73,8 @@ class ReverseConverter:
 
         logging.debug('Hello World! (from ReverseConverter)')
 
-        self.input_files = ReverseConverter.get_input_files(input_files)
-        ReverseConverter.prepare_output_folder(output_folder)
+        self.input_files = ExportLines.get_input_files(input_files)
+        ExportLines.prepare_output_folder(output_folder)
 
     def __call__(self):
         if not self.input_files:
@@ -79,8 +83,8 @@ class ReverseConverter:
 
         # For every file, convert it to MusicXML
         for input_file_name in self.input_files:
-            logging.debug(f'Reading file {input_file_name}')
-            lines = ReverseConverter.read_file_lines(input_file_name)
+            logging.info(f'Reading file {input_file_name}')
+            lines = ExportLines.read_file_lines(input_file_name)
 
             for i, line in enumerate(lines):
                 match = re.fullmatch(r'([a-zA-Z0-9_\-]+)[a-zA-Z0-9_\.]+\s+([0-9]+\s+)?\"([\S\s]+)\"', line)
@@ -92,6 +96,7 @@ class ReverseConverter:
 
                 stave_id = match.group(1)
                 labels = match.group(3)
+                labels = self.translator.convert_line(labels, to_shorter=False)
                 output_file_name = os.path.join(self.output_folder, f'{stave_id}.musicxml')
 
                 parsed_labels = semantic_line_to_music21_score(labels)
