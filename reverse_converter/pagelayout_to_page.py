@@ -1,15 +1,19 @@
 #!/usr/bin/env python3.8
-"""Script to take pageLayout XML from pero-ocr with transcriptions and re-construct page of musical notation.
+"""Script to take output of pero-ocr with musical transcriptions and export it to musicxml and MIDI formats.
 
-What is the output? (options for future development)
- - music21 representation of page (this is first step)
- - pdf of a music notation
- - midi file?
+INPUTS:
+- XML PageLayout (exported directly from pero-ocr engine) using `--input-xml-path` argument
+    - Represents one whole page of musical notation transcribed by pero-ocr engine
+    - OUTPUTS one musicxml file for the page
+    - + MIDI file for page and for individual lines (named according to IDs in PageLayout)
+- Text files with individual transcriptions and their IDs on each line using `--input-transcription-files` argument.
+    - OUTPUTS one musicxml file for each line with names corresponding to IDs in each line
 
 Author: Vojtěch Vlach
 Contact: xvlach22@vutbr.cz
 """
 
+from __future__ import annotations
 import sys
 import argparse
 import os
@@ -19,7 +23,7 @@ import logging
 
 import music21 as music
 
-from semantic_to_music21 import parse_semantic_to_measures, encode_measures, Measure
+from semantic_to_music21 import parse_semantic_to_measures, encode_measures, Measure, semantic_line_to_music21_score
 from pero_ocr.core.layout import PageLayout, RegionLayout, TextLine
 import common_rev_conv
 
@@ -30,8 +34,11 @@ def parseargs():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "-i", "--input-xml-path", required=True, type=str,
+        "-i", "--input-xml-path", type=str, default='',
         help="Path to input XML file with exported PageLayout.")
+    parser.add_argument(
+        '-f', '--input-transcription-files', nargs='*', default=[],
+        help='Input files with sequences as lines with IDs at the beginning.')
     parser.add_argument(
         "-t", "--translator-path", type=str, required=True,
         help="JSON File containing translation dictionary from shorter encoding (exported by model) to longest.")
@@ -56,6 +63,7 @@ def main():
     start = time.time()
     PageLayoutToPage(
         input_xml_path=args.input_xml_path,
+        input_transcription_files=args.input_transcription_files,
         translator_path=args.translator_path,
         output_folder=args.output_folder,
         export_midi=args.export_midi,
@@ -68,30 +76,43 @@ def main():
 class PageLayoutToPage:
     """Take pageLayout XML exported from pero-ocr with transcriptions and re-construct page of musical notation."""
 
-    def __init__(self, input_xml_path: str, translator_path: str,
-                 output_folder: str, export_midi: bool = False,
+    def __init__(self, input_xml_path: str = '', translator_path: str = '',
+                 input_transcription_files: list[str] = None,
+                 output_folder: str = 'output_page', export_midi: bool = False,
                  verbose: bool = False):
         self.translator_path = translator_path
         if verbose:
             logging.basicConfig(level=logging.DEBUG, format='[%(levelname)-s]  \t- %(message)s')
         else:
             logging.basicConfig(level=logging.INFO, format='[%(levelname)-s]\t- %(message)s')
+        self.verbose = verbose
 
-        if not os.path.isfile(input_xml_path):
+        if input_xml_path and not os.path.isfile(input_xml_path):
             logging.error('No input file of this path was found')
         self.input_xml_path = input_xml_path
+
+        self.input_transcription_files = input_transcription_files if input_transcription_files else []
 
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
         self.output_folder = output_folder
         self.export_midi = export_midi
 
+        self.translator = Translator(file_name=self.translator_path)
+
     def __call__(self) -> None:
+        if self.input_transcription_files:
+            ExportLines(input_files=self.input_transcription_files, output_folder=self.output_folder,
+                        translator=self.translator, verbose=self.verbose)()
+
+        if self.input_xml_path:
+            self.export_xml()
+
+    def export_xml(self) -> None:
         page = PageLayout(file=self.input_xml_path)
         print(f'Page {self.input_xml_path} loaded successfully.')
-        translator = Translator(file_name=self.translator_path)
 
-        parts = PageLayoutToPage.regions_to_parts(page.regions, translator, self.export_midi)
+        parts = PageLayoutToPage.regions_to_parts(page.regions, self.translator, self.export_midi)
         music_parts = []
         for part in parts:
             music_parts.append(part.encode_to_music21())
@@ -143,6 +164,86 @@ class PageLayoutToPage:
         return parts
 
 
+class ExportLines:
+    def __init__(self, translator: Translator, input_files: list[str] = None,
+                 output_folder: str = 'output_musicxml', verbose: bool = False):
+        self.translator = translator
+        self.output_folder = output_folder
+
+        if verbose:
+            logging.basicConfig(level=logging.DEBUG, format='[%(levelname)-s]  \t- %(message)s')
+        else:
+            logging.basicConfig(level=logging.INFO, format='[%(levelname)-s]\t- %(message)s')
+
+        logging.debug('Hello World! (from ReverseConverter)')
+
+        self.input_files = ExportLines.get_input_files(input_files)
+        ExportLines.prepare_output_folder(output_folder)
+
+    def __call__(self):
+        if not self.input_files:
+            logging.error('No input files provided. Exiting...')
+            sys.exit(1)
+
+        # For every file, convert it to MusicXML
+        for input_file_name in self.input_files:
+            logging.info(f'Reading file {input_file_name}')
+            lines = ExportLines.read_file_lines(input_file_name)
+
+            for i, line in enumerate(lines):
+                match = re.fullmatch(r'([a-zA-Z0-9_\-]+)[a-zA-Z0-9_\.]+\s+([0-9]+\s+)?\"([\S\s]+)\"', line)
+
+                if not match:
+                    logging.debug(f'NOT MATCHING PATTERN. Skipping line {i} in file {input_file_name}: '
+                                  f'({line[:min(50, len(line))]}...)')
+                    continue
+
+                stave_id = match.group(1)
+                labels = match.group(3)
+                labels = self.translator.convert_line(labels, to_shorter=False)
+                output_file_name = os.path.join(self.output_folder, f'{stave_id}.musicxml')
+
+                parsed_labels = semantic_line_to_music21_score(labels)
+                if not isinstance(parsed_labels, music.stream.Stream):
+                    logging.error(f'Labels could not be parsed. Skipping line {i} in file {input_file_name}: '
+                                  f'({line[:min(50, len(line))]}...)')
+                    continue
+
+                logging.info(f'Parsing successfully completed.')
+                # parsed_labels.show()  # Show parsed labels in some visual program (MuseScore by default)
+
+                xml = common_rev_conv.music21_to_musicxml(parsed_labels)
+                common_rev_conv.write_to_file(output_file_name, xml)
+
+    @staticmethod
+    def prepare_output_folder(output_folder: str):
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+    @staticmethod
+    def get_input_files(input_files: list[str] = None):
+        existing_files = []
+
+        if not input_files:
+            return []
+
+        for input_file in input_files:
+            if os.path.isfile(input_file):
+                existing_files.append(input_file)
+
+        return existing_files
+
+    @staticmethod
+    def read_file_lines(input_file: str) -> list[str]:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            lines = f.read().splitlines()
+
+        if not lines:
+            logging.warning(f'File {input_file} is empty!')
+
+        return [line for line in lines if line]
+
+
 class Part:
     """Represent musical part (part of notation for one instrument/section)"""
 
@@ -160,7 +261,7 @@ class Part:
 
         new_measures = parse_semantic_to_measures(labels)
 
-        # Delete first clef symbol of first measure if same as previous
+        # Delete first clef symbol of first measure in line if same as last clef in previous line
         if len(self.measures) and new_measures[0].get_start_clef() == self.measures[-1].last_clef:
             new_measures[0].delete_clef_symbol()
 
