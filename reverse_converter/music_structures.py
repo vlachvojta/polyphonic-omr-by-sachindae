@@ -6,71 +6,14 @@ Author: Vojtěch Vlach
 Contact: xvlach22@vutbr.cz
 """
 
+from __future__ import annotations
 import re
 from enum import Enum
 import logging
 
 import music21 as music
-from symbol import Symbol, SymbolType
-from common_rev_conv import LENGTH_TO_SYMBOL, AlteredPitches
-
-
-def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
-    """Convert line of semantic labels to list of measures.
-
-    Args:
-        labels (str): one line of labels in semantic format without any prefixes.
-    """
-    labels = labels.strip('"')
-
-    measures_labels = re.split(r'barline', labels)
-
-    stripped_measures_labels = []
-    for measure_label in measures_labels:
-        stripped = measure_label.strip().strip('+').strip()
-        if stripped:
-            stripped_measures_labels.append(stripped)
-
-    measures = [Measure(measure_label) for measure_label in stripped_measures_labels if measure_label]
-
-    previous_measure_key = music.key.Key()  # C Major as a default key (without accidentals)
-    for measure in measures:
-        previous_measure_key = measure.get_key(previous_measure_key)
-
-    measures[0].new_system = True
-
-    previous_measure_last_clef = measures[0].get_last_clef()
-    for measure in measures[1:]:
-        previous_measure_last_clef = measure.get_last_clef(previous_measure_last_clef)
-
-    return measures
-
-
-def encode_measures(measures: list, measure_id_start_from: int = 1) -> list:  # list[Measure]
-    """Get list of measures and encode them to music21 encoded measures."""
-    logging.debug('-------------------------------- -------------- --------------------------------')
-    logging.debug('-------------------------------- START ENCODING --------------------------------')
-    logging.debug('-------------------------------- -------------- --------------------------------')
-
-    measures_encoded = []
-    for measure_id, measure in enumerate(measures):
-        measures_encoded.append(measure.encode_to_music21())
-        measures_encoded[-1].number = measure_id_start_from + measure_id
-
-    return measures_encoded
-
-
-def semantic_line_to_music21_score(labels: str) -> music.stream.Score:
-    """Get semantic line of labels, Return stream encoded in music21 score format."""
-    measures = parse_semantic_to_measures(labels)
-    measures_encoded = encode_measures(measures)
-
-    # stream = music.stream.Score(music.stream.Part([music.instrument.Piano()] + measures_encoded))
-    metadata = music.metadata.Metadata()
-    metadata.title = metadata.composer = ''
-    stream = music.stream.Score([metadata, music.stream.Part([music.instrument.Piano()] + measures_encoded)])
-
-    return stream
+from symbol import Symbol, SymbolType, AlteredPitches
+from symbol import LENGTH_TO_SYMBOL
 
 
 class Measure:
@@ -231,7 +174,7 @@ class Measure:
         return music.stream.Measure(zero_length_encoded + voices_repr)
 
     @staticmethod
-    def find_shortest_voices(voices: list, ignore: list = None) -> list:
+    def find_shortest_voices(voices: list, ignore: list = None) -> list[int]:
         """Go through all voices and find the one with the current shortest duration.
 
         Args:
@@ -258,7 +201,7 @@ class Measure:
         return shortest_voice_ids
 
     @staticmethod
-    def find_zero_length_symbol_groups(symbol_groups: list) -> list:
+    def find_zero_length_symbol_groups(symbol_groups: list[SymbolGroup]) -> list[SymbolGroup]:
         """Returns a list of zero-length symbol groups AT THE BEGGING OF THE MEASURE."""
         zero_length_symbol_groups = []
         for symbol_group in symbol_groups:
@@ -268,7 +211,7 @@ class Measure:
         return zero_length_symbol_groups
 
     @staticmethod
-    def pad_voices_to_n_shortest(voices: list, n: int = 1) -> list:
+    def pad_voices_to_n_shortest(voices: list[Voice], n: int = 1) -> list[int]:
         """Pads voices (starting from the shortest) so there is n shortest voices with same length.
 
         Args:
@@ -293,7 +236,7 @@ class Measure:
         return shortest_voice_ids
 
     @staticmethod
-    def get_mono_start_symbol_groups(symbol_groups: list) -> list:
+    def get_mono_start_symbol_groups(symbol_groups: list[SymbolGroup]) -> list[SymbolGroup]:
         """Get a list of monophonic symbol groups AT THE BEGINNING OF THE MEASURE.
 
         Returns:
@@ -307,7 +250,7 @@ class Measure:
         return mono_start_symbol_groups
 
     @staticmethod
-    def create_mono_start(voices: list, mono_start_symbol_groups: list) -> list:
+    def create_mono_start(voices: list[Voice], mono_start_symbol_groups: list[SymbolGroup]) -> list[Voice]:
         """Create monophonic start of measure in the first voice and add padding to the others.
 
         Args:

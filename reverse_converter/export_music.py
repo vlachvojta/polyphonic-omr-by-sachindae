@@ -20,12 +20,12 @@ import os
 import re
 import time
 import logging
+import json
 
 import music21 as music
 
-from semantic_to_music21 import parse_semantic_to_measures, encode_measures, Measure, semantic_line_to_music21_score
+from music_structures import Measure
 from pero_ocr.core.layout import PageLayout, RegionLayout, TextLine
-import common_rev_conv
 
 
 def parseargs():
@@ -37,7 +37,7 @@ def parseargs():
         "-i", "--input-xml-path", type=str, default='',
         help="Path to input XML file with exported PageLayout.")
     parser.add_argument(
-        '-f', '--input-transcription-files', nargs='*', default=[],
+        '-f', '--input-transcription-files', nargs='*', default=None,
         help='Input files with sequences as lines with IDs at the beginning.')
     parser.add_argument(
         "-t", "--translator-path", type=str, required=True,
@@ -124,8 +124,8 @@ class ExportMusicPage:
 
         # Export score to MusicXML or something
         output_file = self.get_output_file('musicxml')
-        xml = common_rev_conv.music21_to_musicxml(score)
-        common_rev_conv.write_to_file(output_file, xml)
+        xml = music21_to_musicxml(score)
+        write_to_file(output_file, xml)
 
         if self.export_midi:
             self.export_to_midi(score, parts)
@@ -165,6 +165,7 @@ class ExportMusicPage:
 
 
 class ExportMusicLines:
+    """Takes text files with transcriptions as individual lines and exports musicxml file for each one"""
     def __init__(self, translator: Translator, input_files: list[str] = None,
                  output_folder: str = 'output_musicxml', verbose: bool = False):
         self.translator = translator
@@ -212,8 +213,8 @@ class ExportMusicLines:
                 logging.info(f'Parsing successfully completed.')
                 # parsed_labels.show()  # Show parsed labels in some visual program (MuseScore by default)
 
-                xml = common_rev_conv.music21_to_musicxml(parsed_labels)
-                common_rev_conv.write_to_file(output_file_name, xml)
+                xml = music21_to_musicxml(parsed_labels)
+                write_to_file(output_file_name, xml)
 
     @staticmethod
     def prepare_output_folder(output_folder: str):
@@ -294,7 +295,7 @@ class TextLineWrapper:
     def export_midi(self, file_base: str = 'out'):
         filename = f'{file_base}_{self.text_line.id}.mid'
 
-        xml = common_rev_conv.music21_to_musicxml(self.repr_music21)
+        xml = music21_to_musicxml(self.repr_music21)
         parsed_xml = music.converter.parse(xml)
         parsed_xml.write('mid', filename)
 
@@ -302,7 +303,7 @@ class TextLineWrapper:
 class Translator:
     """Translator class for translating shorter SSemantic encoding to Semantic encoding using translator dictionary."""
     def __init__(self, file_name: str):
-        self.translator = common_rev_conv.read_json(file_name)
+        self.translator = Translator.read_json(file_name)
         self.translator_reversed = {v: k for k, v in self.translator.items()}
         self.n_existing_labels = set()
 
@@ -323,6 +324,82 @@ class Translator:
                 self.n_existing_labels.add(symbol)
                 print(f'Not existing label: ({symbol})')
             return ''
+
+    @staticmethod
+    def read_json(filename) -> dict:
+        with open(filename) as f:
+            data = json.load(f)
+        return data
+
+def parse_semantic_to_measures(labels: str) -> list[Measure]:
+    """Convert line of semantic labels to list of measures.
+
+    Args:
+        labels (str): one line of labels in semantic format without any prefixes.
+    """
+    labels = labels.strip('"')
+
+    measures_labels = re.split(r'barline', labels)
+
+    stripped_measures_labels = []
+    for measure_label in measures_labels:
+        stripped = measure_label.strip().strip('+').strip()
+        if stripped:
+            stripped_measures_labels.append(stripped)
+
+    measures = [Measure(measure_label) for measure_label in stripped_measures_labels if measure_label]
+
+    previous_measure_key = music.key.Key()  # C Major as a default key (without accidentals)
+    for measure in measures:
+        previous_measure_key = measure.get_key(previous_measure_key)
+
+    measures[0].new_system = True
+
+    previous_measure_last_clef = measures[0].get_last_clef()
+    for measure in measures[1:]:
+        previous_measure_last_clef = measure.get_last_clef(previous_measure_last_clef)
+
+    return measures
+
+
+def encode_measures(measures: list, measure_id_start_from: int = 1) -> list[Measure]:
+    """Get list of measures and encode them to music21 encoded measures."""
+    logging.debug('-------------------------------- -------------- --------------------------------')
+    logging.debug('-------------------------------- START ENCODING --------------------------------')
+    logging.debug('-------------------------------- -------------- --------------------------------')
+
+    measures_encoded = []
+    for measure_id, measure in enumerate(measures):
+        measures_encoded.append(measure.encode_to_music21())
+        measures_encoded[-1].number = measure_id_start_from + measure_id
+
+    return measures_encoded
+
+
+def semantic_line_to_music21_score(labels: str) -> music.stream.Score:
+    """Get semantic line of labels, Return stream encoded in music21 score format."""
+    measures = parse_semantic_to_measures(labels)
+    measures_encoded = encode_measures(measures)
+
+    # stream = music.stream.Score(music.stream.Part([music.instrument.Piano()] + measures_encoded))
+    metadata = music.metadata.Metadata()
+    metadata.title = metadata.composer = ''
+    stream = music.stream.Score([metadata, music.stream.Part([music.instrument.Piano()] + measures_encoded)])
+
+    return stream
+
+
+def music21_to_musicxml(music_object):
+    out_bytes = music.musicxml.m21ToXml.GeneralObjectExporter(music_object).parse()
+    out_str = out_bytes.decode('utf-8')
+    return out_str.strip()
+
+
+def write_to_file(output_file_name, xml):
+    with open(output_file_name, 'w', encoding='utf-8') as f:
+        f.write(xml)
+
+    logging.info(f'File {output_file_name} successfully written.')
 
 
 if __name__ == "__main__":
