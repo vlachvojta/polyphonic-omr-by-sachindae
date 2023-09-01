@@ -154,7 +154,7 @@ class ExportMusicPage:
         """Takes a list of regions and splits them to parts."""
         max_parts = max([len(region.lines) for region in regions])
 
-        # TODO add empty measure padding to parts without textlines
+        # TODO add empty measure padding to parts without textlines in multi-part scores.
 
         parts = [Part(translator) for _ in range(max_parts)]
         for region in regions:
