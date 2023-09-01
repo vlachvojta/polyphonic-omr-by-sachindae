@@ -61,7 +61,7 @@ def main():
     args = parseargs()
 
     start = time.time()
-    PageLayoutToPage(
+    ExportMusicPage(
         input_xml_path=args.input_xml_path,
         input_transcription_files=args.input_transcription_files,
         translator_path=args.translator_path,
@@ -73,7 +73,7 @@ def main():
     print(f'Total time: {end - start:.2f} s')
 
 
-class PageLayoutToPage:
+class ExportMusicPage:
     """Take pageLayout XML exported from pero-ocr with transcriptions and re-construct page of musical notation."""
 
     def __init__(self, input_xml_path: str = '', translator_path: str = '',
@@ -102,8 +102,8 @@ class PageLayoutToPage:
 
     def __call__(self) -> None:
         if self.input_transcription_files:
-            ExportLines(input_files=self.input_transcription_files, output_folder=self.output_folder,
-                        translator=self.translator, verbose=self.verbose)()
+            ExportMusicLines(input_files=self.input_transcription_files, output_folder=self.output_folder,
+                             translator=self.translator, verbose=self.verbose)()
 
         if self.input_xml_path:
             self.export_xml()
@@ -112,7 +112,7 @@ class PageLayoutToPage:
         page = PageLayout(file=self.input_xml_path)
         print(f'Page {self.input_xml_path} loaded successfully.')
 
-        parts = PageLayoutToPage.regions_to_parts(page.regions, self.translator, self.export_midi)
+        parts = ExportMusicPage.regions_to_parts(page.regions, self.translator, self.export_midi)
         music_parts = []
         for part in parts:
             music_parts.append(part.encode_to_music21())
@@ -164,7 +164,7 @@ class PageLayoutToPage:
         return parts
 
 
-class ExportLines:
+class ExportMusicLines:
     def __init__(self, translator: Translator, input_files: list[str] = None,
                  output_folder: str = 'output_musicxml', verbose: bool = False):
         self.translator = translator
@@ -177,8 +177,8 @@ class ExportLines:
 
         logging.debug('Hello World! (from ReverseConverter)')
 
-        self.input_files = ExportLines.get_input_files(input_files)
-        ExportLines.prepare_output_folder(output_folder)
+        self.input_files = ExportMusicLines.get_input_files(input_files)
+        ExportMusicLines.prepare_output_folder(output_folder)
 
     def __call__(self):
         if not self.input_files:
@@ -188,7 +188,7 @@ class ExportLines:
         # For every file, convert it to MusicXML
         for input_file_name in self.input_files:
             logging.info(f'Reading file {input_file_name}')
-            lines = ExportLines.read_file_lines(input_file_name)
+            lines = ExportMusicLines.read_file_lines(input_file_name)
 
             for i, line in enumerate(lines):
                 match = re.fullmatch(r'([a-zA-Z0-9_\-]+)[a-zA-Z0-9_\.]+\s+([0-9]+\s+)?\"([\S\s]+)\"', line)
