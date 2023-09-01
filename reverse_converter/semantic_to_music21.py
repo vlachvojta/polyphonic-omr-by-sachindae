@@ -23,7 +23,6 @@ def parse_semantic_to_measures(labels: str):  # -> list[Measure]:
     """
     labels = labels.strip('"')
 
-    # measures_labels = re.split(r'\s\+\sbarline\s\+\s', labels)
     measures_labels = re.split(r'barline', labels)
 
     stripped_measures_labels = []

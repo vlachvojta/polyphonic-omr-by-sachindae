@@ -40,7 +40,8 @@ def parseargs():
         help="Set output file with extension. Output format is JSON")
     parser.add_argument(
         "-m", "--export-midi", action='store_true',
-        help="Enable exporting midi file to output_folder.")
+        help=("Enable exporting midi file to output_folder."
+              "Exports whole file and individual lines with names corresponding to them TextLine IDs."))
     parser.add_argument(
         '-v', "--verbose", action='store_true', default=False,
         help="Activate verbose logging.")
@@ -131,7 +132,6 @@ class PageLayoutToPage:
                          ) -> list:  # -> list[Part]:
         """Takes a list of regions and splits them to parts."""
         max_parts = max([len(region.lines) for region in regions])
-        # print(f'Max parts: {max_parts}')
 
         # TODO add empty measure padding to parts without textlines
 
@@ -171,9 +171,6 @@ class Part:
         self.repr_music21.append(new_measures_encoded)
 
         self.textlines.append(TextLineWrapper(line, new_measures_encoded_without_measure_ids))
-        # print('--------------------------------')
-        # print(labels)
-        # self.repr_music21.show('text')
 
     def encode_to_music21(self) -> music.stream.Part:
         if self.repr_music21 is None:
