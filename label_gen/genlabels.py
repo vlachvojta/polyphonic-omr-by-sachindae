@@ -62,13 +62,13 @@ def save_labels(output_file: str, labels_db: dict) -> None:
     output_lines = [f'{file} "{labels}"' for file, labels in labels_db]
     # new_lines_len = len(output_lines)
 
-    while True:
-        if not os.path.exists(output_file):
-            break
-        split = re.split(r'\.', output_file)
-        out_file_name_and_path = '.'.join(split[:-1])
-        out_file_ext = split[-1]
-        output_file = f'{out_file_name_and_path}_new.{out_file_ext}'
+    # while True:
+    #     if not os.path.exists(output_file):
+    #         break
+    #     split = re.split(r'\.', output_file)
+    #     out_file_name_and_path = '.'.join(split[:-1])
+    #     out_file_ext = split[-1]
+    #     output_file = f'{out_file_name_and_path}_new.{out_file_ext}'
 
         # with open(output_file, 'r', encoding='utf-8') as f:
         #     orig_file = f.read()
